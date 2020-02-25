@@ -26,12 +26,32 @@ if not 'DISCORD_TOKEN' in os.environ:
 class SphinxDiscordClient(discord.Client):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
-
+    
   async def on_ready(self):
     print('Logged in as')
     print(self.user.name)
     print(self.user.id)
     print('------')
+    
+    self.moderation_log = self.get_channel(545777338130890752) # the moderation-log channel
+    self.sphinx_guild   = self.get_guild  (409322660070424605) # Sphinx Community
+    
+    mem = self.sphinx_guild.members
+    
+    for m in mem:
+        time_since_creation = (m.joined_at - m.created_at)
+        seconds_since_creation = time_since_creation.total_seconds()
+        print(m.joined_at, m.bot, m.nick, m.name, m.discriminator, m.is_on_mobile(), time_since_creation, seconds_since_creation, "¨¨Possible bot" if (seconds_since_creation < 120) else "Not likely", m.avatar_url, m.id, m.is_avatar_animated(), m.activities)
+        
+        if (seconds_since_creation > 60*60):
+            continue
+        
+        # swy: for some reason in the newer accoutns there's a mismatch between the member avatar and the profile avatar
+        usr = await self.fetch_user(m.id)
+        print("/</ ", usr, usr.avatar, usr.avatar_url)
+        
+        if (m.avatar != usr.avatar):
+            print("**Avatar mismatch: ", m, m.avatar, usr.avatar)
 
   async def on_member_join(self, member):
     seconds_since_creation = (datetime.utcnow() - member.created_at).seconds
@@ -54,12 +74,21 @@ class SphinxDiscordClient(discord.Client):
     #    reasons.append("3 day-old account with HypeSquad.")
     
     if reasons:
-        moderation_log = self.get_channel(545777338130890752) #moderation-log
-
         # swy: send a message to the #off-topic channel
-        await moderation_log.send('Preemptively banned {0.mention}, probably some automated account. 🔨'.format(member))
+        await self.moderation_log.send('Preemptively banned {0.mention}, probably some automated account. 🔨'.format(member))
         await member.guild.ban(member, reason='[Automatic] Suspected bot or automated account.\n' + " - " + "\n - ".join(reasons))
       
+  async def on_user_update(before, after):
+    # swy: only apply these rules to unverified users as a basic safeguard
+    
+    print(before, after)
+    
+    if len(member.roles):
+        return
+        
+    self.sphinx_guild.get_member(after.id)
+    
+
   async def on_message_delete(self, message):
     print('Deleted message:', pprint(message), message.content, time.strftime("%Y-%m-%d %H:%M"))
 
