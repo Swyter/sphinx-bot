@@ -32,7 +32,7 @@ class SphinxDiscordClient(discord.Client):
     print(self.user.name)
     print(self.user.id)
     print('------')
-    
+    self.channel_test   = self.get_channel(470890531061366787) # Swyter test -- #general
     self.moderation_log = self.get_channel(545777338130890752) # the moderation-log channel
     self.sphinx_guild   = self.get_guild  (409322660070424605) # Sphinx Community
     
@@ -45,8 +45,18 @@ class SphinxDiscordClient(discord.Client):
     #    
     #    if (seconds_since_creation > 60*60):
     #        continue
+    
+  async def apply_ban_rules(member=None, user=None, on_member_join=False):
+  
+    # swy: sanity check; ensure we either have an user or a member, buth not both
+    assert((member and user == None) or (member == None and user))
+    
+    if (not member):
+        member = self.sphinx_guild.get_member(user.id)
 
-  async def on_member_join(self, member):
+    if (not user):
+        user = self.get_user(member.id)
+  
     time_since_creation    = (m.joined_at - m.created_at)
     seconds_since_creation = time_since_creation.total_seconds()
     print('User joined: ', pprint(member), time.strftime("%Y-%m-%d %H:%M"), member.avatar, member.created_at, "Seconds since account creation: " + str(seconds_since_creation))
@@ -93,19 +103,21 @@ class SphinxDiscordClient(discord.Client):
         embed.add_field(name='➥ Joined at',              value=member.joined_at,       inline=True)
   
         # swy: send a message to the #off-topic channel
-        await self.moderation_log.send('Preemptively banned {0.mention}, probably some automated account. 🔨'.format(member), embed=embed)
-        await member.guild.ban(member, reason='[Automatic] Suspected bot or automated account.\n' + " - " + "\n - ".join(reasons))
+        await self.channel_test.send('Preemptively banned {0.mention}, probably some automated account. 🔨'.format(member), embed=embed)
+        #await member.guild.ban(member, reason='[Automatic] Suspected bot or automated account.\n' + " - " + "\n - ".join(reasons))
       
-  async def on_user_update(before, after):
+      
+  async def on_member_join(self, member):
+    apply_ban_rules(member=member, on_member_join=True)
+  
+  async def on_user_update(self, before, after):
     # swy: only apply these rules to unverified users as a basic safeguard
-    
     print(before, after)
     
     if (before.avatar == after.avatar):
         return
         
-    self.sphinx_guild.get_member(after.id)
-    
+    apply_ban_rules(user=after)    
 
   async def on_message_delete(self, message):
     print('Deleted message:', pprint(message), message.content, time.strftime("%Y-%m-%d %H:%M"))
