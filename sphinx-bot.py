@@ -36,27 +36,26 @@ class SphinxDiscordClient(discord.Client):
     self.moderation_log = self.get_channel(545777338130890752) # the moderation-log channel
     self.sphinx_guild   = self.get_guild  (409322660070424605) # Sphinx Community
     
-    mem = self.sphinx_guild.members
-    
-    for m in mem:
-        time_since_creation = (m.joined_at - m.created_at)
-        seconds_since_creation = time_since_creation.total_seconds()
-        print(m.joined_at, m.bot, m.nick, m.name, m.discriminator, m.is_on_mobile(), time_since_creation, seconds_since_creation, "¨¨Possible bot" if (seconds_since_creation < 120) else "Not likely", m.avatar_url, m.id, m.is_avatar_animated(), m.activities)
-        
-        if (seconds_since_creation > 60*60):
-            continue
-        
-        # swy: for some reason in the newer accounts there's a mismatch between the member avatar and the profile avatar
-        usr = await self.fetch_user(m.id)
-        print("/</ ", usr, usr.avatar, usr.avatar_url)
-        
-        if (m.avatar != usr.avatar):
-            print("**Avatar mismatch: ", m, m.avatar, usr.avatar)
+    #mem = self.sphinx_guild.members
+    #
+    #for m in mem:
+    #    time_since_creation = (m.joined_at - m.created_at)
+    #    seconds_since_creation = time_since_creation.total_seconds()
+    #    print(m.joined_at, m.bot, m.nick, m.name, m.discriminator, m.is_on_mobile(), time_since_creation, seconds_since_creation, "¨¨Possible bot" if (seconds_since_creation < 120) else "Not likely", m.avatar_url, m.id, m.is_avatar_animated(), m.activities)
+    #    
+    #    if (seconds_since_creation > 60*60):
+    #        continue
 
   async def on_member_join(self, member):
-    time_since_creation = (m.joined_at - m.created_at)
+    time_since_creation    = (m.joined_at - m.created_at)
     seconds_since_creation = time_since_creation.total_seconds()
     print('User joined: ', pprint(member), time.strftime("%Y-%m-%d %H:%M"), member.avatar, member.created_at, "Seconds since account creation: " + str(seconds_since_creation))
+    
+    
+    # swy: only apply these rules to unverified
+    #      users as a basic safeguard
+    if len(member.roles):
+        return
     
     reasons = []
     blacklisted_avatars = [
@@ -64,19 +63,37 @@ class SphinxDiscordClient(discord.Client):
         '1de82d515d5910830022864f369cb18e', # https://cdn.discordapp.com/avatars/681864778985242637/1de82d515d5910830022864f369cb18e.png?size=128
     ]
     
+    # swy: avatars repeatedly used by known spammers.
     if member.avatar in blacklisted_avatars:
-        reasons.append("Blacklisted avatar: " + member.avatar_url)
+        reasons.append("Blacklisted [avatar](%s)." % member.avatar_url)
     
     # swy: when the user is created within seconds of joining but already has a set avatar; not humanly possible.
     if member.avatar and seconds_since_creation <= 30:
-        reasons.append("Member instantly created with avatar: " + member.avatar_url)
+        reasons.append("Member instantly created with [avatar](%s)." % member.avatar_url)
+    
+    # swy: for some reason in newer ccounts there's a mismatch between the member avatar and the profile avatar.
+    try:
+        usr = await self.fetch_user(m.id)
+    except discord.NotFound:
+        print("ID %s is not a Discord user." % m.id)
+        
+    if (usr and member.avatar != usr.avatar):
+        reasons.append("Avatar mismatch between [member](%s) and [user](%s)." % (member.avatar_url, usr.avatar_url))
     
     #if member.hypesquad and (datetime.utcnow() - member.created_at).days <= 3:
     #    reasons.append("3 day-old account with HypeSquad.")
     
     if reasons:
+        embed = discord.Embed(colour=discord.Colour(0x1b2148), title='Reasons', description=(" - " + "\n - ".join(reasons)))
+        
+        embed.set_thumbnail(url=member.avatar_url)
+        embed.add_field(name='➥ Seconds since creation', value=seconds_since_creation, inline=True)
+        embed.add_field(name='➥ ID',                     value=member.id,              inline=True)
+        embed.add_field(name='➥ Created at',             value=member.created_at,      inline=True)
+        embed.add_field(name='➥ Joined at',              value=member.joined_at,       inline=True)
+  
         # swy: send a message to the #off-topic channel
-        await self.moderation_log.send('Preemptively banned {0.mention}, probably some automated account. 🔨'.format(member))
+        await self.moderation_log.send('Preemptively banned {0.mention}, probably some automated account. 🔨'.format(member), embed=embed)
         await member.guild.ban(member, reason='[Automatic] Suspected bot or automated account.\n' + " - " + "\n - ".join(reasons))
       
   async def on_user_update(before, after):
@@ -84,10 +101,7 @@ class SphinxDiscordClient(discord.Client):
     
     print(before, after)
     
-    if (before.avatar == after.avatar)
-        return
-    
-    if len(member.roles):
+    if (before.avatar == after.avatar):
         return
         
     self.sphinx_guild.get_member(after.id)
