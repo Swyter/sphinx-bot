@@ -65,16 +65,22 @@ class SphinxDiscordClient(discord.Client):
 
     if not user:
         user = self.get_user(member.id)
-        
-    print("--called", member)
     
-    # swy: only apply these rules to unverified
-    #      users as a basic safeguard
-    #if len(member.roles) > 0:
-    #    return
-    print("--passed", member)
+    # swy: only apply these rules to unverified users as a basic safeguard (they only have one role; called @everyone)
+    print("roles", member.roles, len(member.roles))
+    if (len(member.roles) > 1):
+        return
+    
+    print("surpased")
     time_since_creation    = (member.joined_at - member.created_at)
     seconds_since_creation = time_since_creation.total_seconds()
+    
+    # swy: for some reason fetching a fresh user profile brings different results
+    try:
+        usr = await self.fetch_user(member.id)
+    except discord.NotFound:
+        print("ID %s is not a Discord user." % m.id)
+        return
     
     reasons = []
     blacklisted_avatars = [
@@ -83,20 +89,15 @@ class SphinxDiscordClient(discord.Client):
     ]
     
     # swy: avatars repeatedly used by known spammers.
-    if member.avatar in blacklisted_avatars:
-        reasons.append("Blacklisted [avatar](%s)." % member.avatar_url)
+    if usr.avatar in blacklisted_avatars:
+        reasons.append("Blacklisted [avatar](%s)." % usr.avatar_url)
     
     # swy: when the user is created within seconds of joining but already has a set avatar; not humanly possible.
-    if member.avatar and seconds_since_creation <= 30:
+    if on_member_join and (member.avatar or usr.avatar) and seconds_since_creation <= 30:
         reasons.append("Member instantly created with [avatar](%s)." % member.avatar_url)
     
-    # swy: for some reason in newer ccounts there's a mismatch between the member avatar and the profile avatar.
-    try:
-        usr = await self.fetch_user(member.id)
-    except discord.NotFound:
-        print("ID %s is not a Discord user." % m.id)
-        
-    if (usr and member.avatar != usr.avatar):
+    # swy: for some reason in newer ccounts there's a mismatch between the member avatar and the profile avatar.       
+    if member.avatar != usr.avatar:
         reasons.append("Avatar mismatch between [member](%s) and [user](%s)." % (member.avatar_url, usr.avatar_url))
     
     #if member.hypesquad and (datetime.utcnow() - member.created_at).days <= 3:
@@ -105,11 +106,15 @@ class SphinxDiscordClient(discord.Client):
     if reasons:
         embed = discord.Embed(colour=discord.Colour(0x1b2148), title='Reasons', description=(" - " + "\n - ".join(reasons)))
         
-        embed.set_thumbnail(url=member.avatar_url)
+        embed.set_thumbnail(url=usr.avatar_url)
         embed.add_field(name='➥ Seconds since creation', value=seconds_since_creation, inline=True)
         embed.add_field(name='➥ ID',                     value=member.id,              inline=True)
         embed.add_field(name='➥ Created at',             value=member.created_at,      inline=True)
         embed.add_field(name='➥ Joined at',              value=member.joined_at,       inline=True)
+        embed.add_field(name='➥ Name and discriminator', value=member.name + '#' + member.discriminator)
+      
+        if member.nick:
+            embed.add_field(name='➥ Server nick', value=member.nick)
   
         # swy: send a message to the #off-topic channel
         await self.channel_test.send('Preemptively banned {0.mention}, probably some automated account. 🔨'.format(member), embed=embed)
