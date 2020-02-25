@@ -50,28 +50,20 @@ class SphinxDiscordClient(discord.Client):
         seconds_since_creation = time_since_creation.total_seconds()
         #print(m.joined_at, m.bot, m.nick, m.name, m.discriminator, m.is_on_mobile(), time_since_creation, seconds_since_creation, "¨¨Possible bot" if (seconds_since_creation < 120) else "Not likely", m.avatar_url, m.id, m.is_avatar_animated(), m.activities)
         
-        if (seconds_since_creation <= 60):
+        if (seconds_since_creation <= 60 and len(m.roles) <= 1):
             print("calling on", m)
             await self.apply_ban_rules(member=m)
     print("done waiting")
     
-  async def apply_ban_rules(self, member=None, user=None, on_member_join=False):
-
-    # swy: sanity check; ensure we either have an user or a member, buth not both
-    assert((member and user == None) or (member == None and user))
-
-    if not member:
-        member = self.sphinx_guild.get_member(user.id)
-
-    if not user:
-        user = self.get_user(member.id)
-    
+  async def apply_ban_rules(self, member=None, on_member_join=False):
+    # swy: sanity check; ensure we either have a member
+    assert(member)
+        
     # swy: only apply these rules to unverified users as a basic safeguard (they only have one role; called @everyone)
-    print("roles", member.roles, len(member.roles))
-    if (len(member.roles) > 1):
+    #      if this member has more than one role, skip it. that's it.
+    if len(member.roles) > 1:
         return
-    
-    print("surpased")
+        
     time_since_creation    = (member.joined_at - member.created_at)
     seconds_since_creation = time_since_creation.total_seconds()
     
@@ -133,10 +125,14 @@ class SphinxDiscordClient(discord.Client):
     print(before, after)
     
     # swy: we only care about avatar changes
-    #if (before.avatar == after.avatar):
-    #    return
-        
-    await self.apply_ban_rules(user=after)
+    if (before.avatar == after.avatar):
+        return
+
+    # swy: ensure this is a member of the correct server; check that that it only has the default role
+    m = self.sphinx_guild.get_member(after.id)
+    
+    if m and len(m.roles) <= 1:
+        await self.apply_ban_rules(member=m)
 
   async def on_message_delete(self, message):
     print('Deleted message:', pprint(message), message.content, time.strftime("%Y-%m-%d %H:%M"))
@@ -159,7 +155,7 @@ class SphinxDiscordClient(discord.Client):
         #        print("calling on", m)
         #        await self.apply_ban_rules(member=m)
         #print("done waiting")
-        # task runs every 30 seconds; infinitely
+        # task runs every 30 minutes; infinitely
         await asyncio.sleep(30 * 60)
 
 # swy: launch our bot thingie, allow for Ctrl + C
