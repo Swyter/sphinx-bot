@@ -46,7 +46,7 @@ class SphinxDiscordClient(discord.Client):
         if (seconds_since_creation > 60*60):
             continue
         
-        # swy: for some reason in the newer accoutns there's a mismatch between the member avatar and the profile avatar
+        # swy: for some reason in the newer accounts there's a mismatch between the member avatar and the profile avatar
         usr = await self.fetch_user(m.id)
         print("/</ ", usr, usr.avatar, usr.avatar_url)
         
@@ -54,8 +54,9 @@ class SphinxDiscordClient(discord.Client):
             print("**Avatar mismatch: ", m, m.avatar, usr.avatar)
 
   async def on_member_join(self, member):
-    seconds_since_creation = (datetime.utcnow() - member.created_at).seconds
-    print('User joined: ', pprint(member), time.strftime("%Y-%m-%d %H:%M"), member.avatar, member.created_at, "Seconds since account creation: " + seconds_since_creation)
+    time_since_creation = (m.joined_at - m.created_at)
+    seconds_since_creation = time_since_creation.total_seconds()
+    print('User joined: ', pprint(member), time.strftime("%Y-%m-%d %H:%M"), member.avatar, member.created_at, "Seconds since account creation: " + str(seconds_since_creation))
     
     reasons = []
     blacklisted_avatars = [
@@ -82,6 +83,9 @@ class SphinxDiscordClient(discord.Client):
     # swy: only apply these rules to unverified users as a basic safeguard
     
     print(before, after)
+    
+    if (before.avatar == after.avatar)
+        return
     
     if len(member.roles):
         return
