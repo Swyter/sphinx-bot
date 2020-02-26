@@ -31,6 +31,7 @@ class SphinxDiscordClient(discord.Client):
     self.loop.set_debug(True)
     # create the background task and run it in the background
     self.post_init_event = asyncio.Event()
+    self.post_join_event = asyncio.Event()
     self.last_member_joined = datetime.utcfromtimestamp(0)
     self.member_heart = {}
     self.bg_task = self.loop.create_task(self.checker_background_task())
@@ -141,6 +142,8 @@ class SphinxDiscordClient(discord.Client):
     #      if member_heart is set to zero we know that the member joined in this session, as there is not persistent storage
     self.last_member_joined = datetime.utcnow()
     self.member_heart[member.id] = 0
+    self.post_join_event.set()
+    self.post_join_event.clear()
     
     print('User joined: ', pprint(member), time.strftime("%Y-%m-%d %H:%M"), member.avatar, member.created_at, "Seconds since account creation: " + str(seconds_since_creation), "Status", member.status, member.mobile_status, member.desktop_status, member.web_status, member.activity)
     reasons = await self.apply_ban_rules(member=member, on_member_join=True)
@@ -228,11 +231,16 @@ class SphinxDiscordClient(discord.Client):
 
         # task runs every 30 seconds; infinitely. but run at a faster rate right after someone joins to try to get more heartbeats
         print("cadence", datetime.utcnow(), self.last_member_joined, (datetime.utcnow() - self.last_member_joined), (datetime.utcnow() - self.last_member_joined).total_seconds())
-        if (datetime.utcnow() - self.last_member_joined).total_seconds() < 40:
-            await asyncio.sleep(1)
+        if (datetime.utcnow() - self.last_member_joined).total_seconds() < 30:
+            cadence = 1
         else:
-            await asyncio.sleep(30)
-
+            cadence = 30
+            
+        try:
+            await asyncio.wait_for(self.post_join_event.wait(), timeout=cadence)
+        except asyncio.TimeoutError:
+            pass
+            
 # swy: launch our bot thingie, allow for Ctrl + C
 client = SphinxDiscordClient()
 
