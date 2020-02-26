@@ -9,7 +9,6 @@ import random
 import time
 from datetime import datetime, timedelta
 
-
 # swy: ugly discord.log file boilerplate
 import logging
 
@@ -32,8 +31,10 @@ class SphinxDiscordClient(discord.Client):
     self.loop.set_debug(True)
     # create the background task and run it in the background
     self.post_init_event = asyncio.Event()
-    self.last_member_joined = datetime.utcfromtimestamp(0) 
+    self.last_member_joined = datetime.utcfromtimestamp(0)
+    self.member_state = {}
     self.bg_task = self.loop.create_task(self.checker_background_task())
+    
     
   async def on_ready(self):
     # swy: see checker_background_task() for the initialized "global" variables
@@ -47,6 +48,7 @@ class SphinxDiscordClient(discord.Client):
     self.moderation_log = self.get_channel(545777338130890752) # the moderation-log channel
     self.sphinx_guild   = self.get_guild  (409322660070424605) # Sphinx Community
     self.post_init_event.set()
+    
     
   async def apply_ban_rules(self, member=None, on_member_join=False, on_member_update=False):
     # swy: sanity check; ensure we either have a member
@@ -79,18 +81,12 @@ class SphinxDiscordClient(discord.Client):
         'd97d9ee1f09baa485ac06bc33ef644b2', # https://cdn.discordapp.com/avatars/681885340457369632/d97d9ee1f09baa485ac06bc33ef644b2.png?size=128
     ]
     
+    print("   Member status:", member.name, member.discriminator, member.id, member.status, member.mobile_status, member.desktop_status, member.web_status, member.activity, member.avatar, time_since_joining, seconds_since_joining)
     
-    
-    # swy: for some reason fetching a fresh user profile brings different results
-    try:
-        mmb = await self.sphinx_guild.fetch_member(member.id)
-    except discord.NotFound:
-        print("ID %s is not a Discord member." % m.id)
-        return
-    
-    #if on_member_join:
-    print("   Mmb status:", mmb.name, mmb.discriminator, mmb.id, mmb.status, mmb.mobile_status, mmb.desktop_status, mmb.web_status, mmb.activity, mmb.avatar, time_since_joining)
-    print("Member status:", member.name, member.discriminator, member.id, member.status, member.mobile_status, member.desktop_status, member.web_status, member.activity, member.avatar, time_since_joining)
+    # swy: add a heartbeat detector, to detect a modicum of user activity in new accounts
+    if (member.status is not discord.Status.offline and seconds_since_joining <= 120):
+        self.member_state[member.id] += 1
+        print("MMBSTTE", member.id, self.member_state)
     
     # swy: avatars repeatedly used by known spammers.
     if usr.avatar in blacklisted_avatars:
@@ -99,11 +95,13 @@ class SphinxDiscordClient(discord.Client):
     # swy: when the user is created within seconds of joining but already has a set avatar; not humanly possible.
     if on_member_join and (member.avatar or usr.avatar) and seconds_since_creation <= 30:
         reasons.append("Member instantly created with [avatar](%s)." % member.avatar_url)
-        
+
     # swy: when the user is created within seconds of joining but already is set to offline; not humanly possible.
-    if on_member_join and member.status == discord.Status.offline and seconds_since_creation <= 30:
-        reasons.append("Member instantly created and joined as offline.")
-        
+    heartbeats = self.member_state.get(member.id, 0)
+    
+    if heartbeats < 10 and seconds_since_creation <= 120 and seconds_since_joining >= 30:
+        reasons.append("Member instantly created and joined as offline. Heartbeats: %u." % heartbeats)
+
     # swy: for some reason in newer bot accounts there's a mismatch between the member avatar and the profile avatar.       
     if member.avatar != usr.avatar:
         reasons.append("Avatar mismatch between [member](%s) and [user](%s)." % (member.avatar_url, usr.avatar_url))
@@ -148,7 +146,11 @@ class SphinxDiscordClient(discord.Client):
         elif seconds_since_creation < (60 * 60 * 2) and member.status == discord.Status.offline:
             await self.moderation_log.send('The account {0.mention} was created only {1} seconds ago and joined offline. Fishy. 🤔'.format(member, seconds_since_creation))
             
+
   async def on_member_update(self, before, after):
+    if len(after.roles) > 1:
+        return
+  
     print("omu", before, after)
     
     # swy: we only care about status and activity changes; not role or nickname changes
@@ -158,7 +160,11 @@ class SphinxDiscordClient(discord.Client):
     if after and len(after.roles) <= 1:
         await self.apply_ban_rules(member=after, on_member_update=True)
   
+
   async def on_user_update(self, before, after):
+    if len(after.roles) > 1:
+        return
+        
     print("ouu", before, after)
     
     # swy: we only care about avatar changes
@@ -175,6 +181,7 @@ class SphinxDiscordClient(discord.Client):
   async def on_message_delete(self, message):
     print('Deleted message:', pprint(message), message.content, time.strftime("%Y-%m-%d %H:%M"))
 
+
   async def on_message(self, message):
     # swy: thanks!
     if message.content.lower().startswith('good bot'):
@@ -185,10 +192,9 @@ class SphinxDiscordClient(discord.Client):
     if message.author == self.user or message.author.bot:
         return
     
-    print("PM:", pprint(message), message.content, time.strftime("%Y-%m-%d %H:%M"))
-    
     # swy: only handle private messages, ensure we are in DMs
     if isinstance(message.channel, discord.DMChannel):
+        print("PM:", pprint(message), message.content, time.strftime("%Y-%m-%d %H:%M"))
         await asyncio.sleep(random.randint(4, 6))
         async with message.channel.typing():
             # swy: useful for testing
@@ -215,7 +221,7 @@ class SphinxDiscordClient(discord.Client):
             if (seconds_since_creation <= 60 * 60 and len(m.roles) <= 1):
                 await self.apply_ban_rules(member=m)
 
-        # task runs every 30 seconds; infinitely. but run at a faster rate right after someone joins
+        # task runs every 30 seconds; infinitely. but run at a faster rate right after someone joins to try to get more heartbeats
         if (datetime.utcnow() - self.last_member_joined).total_seconds() < 20:
             await asyncio.sleep(1)
         else:
