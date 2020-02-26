@@ -47,7 +47,6 @@ class SphinxDiscordClient(discord.Client):
     # swy: global variables for this client instance, this is loaded right after on_ready, so it's a good place()
     self.channel_test   = self.get_channel(470890531061366787) # Swyter test -- #general
     self.moderation_log = self.get_channel(545777338130890752) # the moderation-log channel
-  # self.sphinx_guild   = self.get_guild  (470890531061366784) # Sphinx Community
     self.post_init_event.set()
     
     
@@ -84,9 +83,9 @@ class SphinxDiscordClient(discord.Client):
     
     print("   Member status:", member.name, member.discriminator, member.id, member.status, member.mobile_status, member.desktop_status, member.web_status, member.activity, member.avatar, time_since_joining, seconds_since_joining)
     
-    # swy: add a heartbeat detector, to detect a modicum of user activity in new accounts
+    # swy: add a heartbeat detector during the first 120 seconds, to detect a modicum of user activity in new accounts
     if (member.id in self.member_heart and member.status is not discord.Status.offline and seconds_since_joining <= 120):
-        self.member_heart[member.id] += 1
+        self.member_heart[member.id] += 1 * on_member_update # organic movement is worth a lot more than just sitting there
         print("MMBSTTE", member.id, self.member_heart, seconds_since_joining)
     
     # swy: avatars repeatedly used by known spammers.
@@ -127,9 +126,9 @@ class SphinxDiscordClient(discord.Client):
             embed.add_field(name='➥ Server nick', value=member.nick)
   
         # swy: send a message to the #off-topic channel
-        #await self.moderation_log.send('Preemptively banned {0.mention}, probably some automated account. 🔨'.format(member), embed=embed)
+        await self.moderation_log.send('Preemptively banned {0.mention}, probably some automated account. 🔨'.format(member), embed=embed)
         await self.channel_test.send  ('Preemptively banned {0.mention}, probably some automated account. 🔨'.format(member), embed=embed)
-        #await member.guild.ban(member, reason='[Automatic] Suspected bot or automated account.\n' + " - " + "\n - ".join(reasons))
+        await member.guild.ban(member, reason='[Automatic] Suspected bot or automated account.\n' + " - " + "\n - ".join(reasons))
 
     return reasons
 
@@ -224,9 +223,7 @@ class SphinxDiscordClient(discord.Client):
             for m in mem:
                 time_since_creation    = (m.joined_at - m.created_at)
                 seconds_since_creation = time_since_creation.total_seconds()
-                
-                #print(m.joined_at, m.bot, m.nick, m.name, m.discriminator, m.is_on_mobile(), time_since_creation, seconds_since_creation, "¨¨Possible bot" if (seconds_since_creation < 120) else "Not likely", m.avatar_url, m.id, m.is_avatar_animated(), m.activities)
-                
+
                 if (seconds_since_creation <= 60 * 60 and len(m.roles) <= 1):
                     print("ssc", m.name, m.discriminator, seconds_since_creation, time_since_creation, m.joined_at, m.created_at)
                     await self.apply_ban_rules(member=m)
