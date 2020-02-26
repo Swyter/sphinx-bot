@@ -32,6 +32,7 @@ class SphinxDiscordClient(discord.Client):
     self.loop.set_debug(True)
     # create the background task and run it in the background
     self.post_init_event = asyncio.Event()
+    self.last_member_joined = datetime.utcfromtimestamp(0) 
     self.bg_task = self.loop.create_task(self.checker_background_task())
     
   async def on_ready(self):
@@ -47,7 +48,7 @@ class SphinxDiscordClient(discord.Client):
     self.sphinx_guild   = self.get_guild  (409322660070424605) # Sphinx Community
     self.post_init_event.set()
     
-  async def apply_ban_rules(self, member=None, on_member_join=False):
+  async def apply_ban_rules(self, member=None, on_member_join=False, on_member_update=False):
     # swy: sanity check; ensure we either have a member
     assert(member)
         
@@ -58,6 +59,9 @@ class SphinxDiscordClient(discord.Client):
         
     time_since_creation    = (member.joined_at - member.created_at)
     seconds_since_creation = time_since_creation.total_seconds()
+    
+    time_since_joining     = (datetime.utcnow() - member.joined_at)
+    seconds_since_joining  = time_since_joining.total_seconds()
     
     # swy: for some reason fetching a fresh user profile brings different results
     try:
@@ -74,6 +78,19 @@ class SphinxDiscordClient(discord.Client):
         '334b09e66c36ffbb0ea946d7641f1018', # https://cdn.discordapp.com/avatars/681774685377003527/334b09e66c36ffbb0ea946d7641f1018.png?size=128
         'd97d9ee1f09baa485ac06bc33ef644b2', # https://cdn.discordapp.com/avatars/681885340457369632/d97d9ee1f09baa485ac06bc33ef644b2.png?size=128
     ]
+    
+    
+    
+    # swy: for some reason fetching a fresh user profile brings different results
+    try:
+        mmb = await self.sphinx_guild.fetch_member(member.id)
+    except discord.NotFound:
+        print("ID %s is not a Discord member." % m.id)
+        return
+    
+    #if on_member_join:
+    print("   Mmb status:", mmb.name, mmb.discriminator, mmb.id, mmb.status, mmb.mobile_status, mmb.desktop_status, mmb.web_status, mmb.activity, mmb.avatar, time_since_joining)
+    print("Member status:", member.name, member.discriminator, member.id, member.status, member.mobile_status, member.desktop_status, member.web_status, member.activity, member.avatar, time_since_joining)
     
     # swy: avatars repeatedly used by known spammers.
     if usr.avatar in blacklisted_avatars:
@@ -110,7 +127,7 @@ class SphinxDiscordClient(discord.Client):
         # swy: send a message to the #off-topic channel
         await self.moderation_log.send('Preemptively banned {0.mention}, probably some automated account. 🔨'.format(member), embed=embed)
         await self.channel_test.send  ('Preemptively banned {0.mention}, probably some automated account. 🔨'.format(member), embed=embed)
-        await member.guild.ban(member, reason='[Automatic] Suspected bot or automated account.\n' + " - " + "\n - ".join(reasons))
+        #await member.guild.ban(member, reason='[Automatic] Suspected bot or automated account.\n' + " - " + "\n - ".join(reasons))
 
     return reasons
 
@@ -119,7 +136,9 @@ class SphinxDiscordClient(discord.Client):
     time_since_creation    = (member.joined_at - member.created_at)
     seconds_since_creation = time_since_creation.total_seconds()
     
-    print('User joined: ', pprint(member), time.strftime("%Y-%m-%d %H:%M"), member.avatar, member.created_at, "Seconds since account creation: " + str(seconds_since_creation), "Status", member.status)
+    self.last_member_joined = datetime.utcnow()
+    
+    print('User joined: ', pprint(member), time.strftime("%Y-%m-%d %H:%M"), member.avatar, member.created_at, "Seconds since account creation: " + str(seconds_since_creation), "Status", member.status, member.mobile_status, member.desktop_status, member.web_status, member.activity)
     reasons = await self.apply_ban_rules(member=member, on_member_join=True)
     
     # swy: while we didn't ban anyone we can still warn about fishy accounts
@@ -129,9 +148,18 @@ class SphinxDiscordClient(discord.Client):
         elif seconds_since_creation < (60 * 60 * 2) and member.status == discord.Status.offline:
             await self.moderation_log.send('The account {0.mention} was created only {1} seconds ago and joined offline. Fishy. 🤔'.format(member, seconds_since_creation))
             
+  async def on_member_update(self, before, after):
+    print("omu", before, after)
+    
+    # swy: we only care about status and activity changes; not role or nickname changes
+    if (before.status == after.status and before.activity == after.activity):
+        return
+
+    if after and len(after.roles) <= 1:
+        await self.apply_ban_rules(member=after, on_member_update=True)
   
   async def on_user_update(self, before, after):
-    print(before, after)
+    print("ouu", before, after)
     
     # swy: we only care about avatar changes
     if (before.avatar == after.avatar):
@@ -144,6 +172,9 @@ class SphinxDiscordClient(discord.Client):
         await self.apply_ban_rules(member=m)
 
 
+  async def on_message_delete(self, message):
+    print('Deleted message:', pprint(message), message.content, time.strftime("%Y-%m-%d %H:%M"))
+
   async def on_message(self, message):
     # swy: thanks!
     if message.content.lower().startswith('good bot'):
@@ -153,6 +184,8 @@ class SphinxDiscordClient(discord.Client):
     # swy: we do not want the bot to reply to itself or web-hooks
     if message.author == self.user or message.author.bot:
         return
+    
+    print("PM:", pprint(message), message.content, time.strftime("%Y-%m-%d %H:%M"))
     
     # swy: only handle private messages, ensure we are in DMs
     if isinstance(message.channel, discord.DMChannel):
@@ -182,8 +215,11 @@ class SphinxDiscordClient(discord.Client):
             if (seconds_since_creation <= 60 * 60 and len(m.roles) <= 1):
                 await self.apply_ban_rules(member=m)
 
-        # task runs every 30 seconds; infinitely
-        await asyncio.sleep(30)
+        # task runs every 30 seconds; infinitely. but run at a faster rate right after someone joins
+        if (datetime.utcnow() - self.last_member_joined).total_seconds() < 20:
+            await asyncio.sleep(1)
+        else:
+            await asyncio.sleep(30)
 
 # swy: launch our bot thingie, allow for Ctrl + C
 client = SphinxDiscordClient()
