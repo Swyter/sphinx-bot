@@ -46,7 +46,7 @@ class SphinxDiscordClient(discord.Client):
     # swy: global variables for this client instance, this is loaded right after on_ready, so it's a good place()
     self.channel_test   = self.get_channel(470890531061366787) # Swyter test -- #general
     self.moderation_log = self.get_channel(545777338130890752) # the moderation-log channel
-    self.sphinx_guild   = self.get_guild  (409322660070424605) # Sphinx Community
+    self.sphinx_guild   = self.get_guild  (470890531061366784) # Sphinx Community
     self.post_init_event.set()
     
     
@@ -84,7 +84,7 @@ class SphinxDiscordClient(discord.Client):
     print("   Member status:", member.name, member.discriminator, member.id, member.status, member.mobile_status, member.desktop_status, member.web_status, member.activity, member.avatar, time_since_joining, seconds_since_joining)
     
     # swy: add a heartbeat detector, to detect a modicum of user activity in new accounts
-    if (member.status is not discord.Status.offline and seconds_since_joining <= 120):
+    if (member.id in self.member_heart and member.status is not discord.Status.offline and seconds_since_joining <= 120):
         self.member_heart[member.id] += 1
         print("MMBSTTE", member.id, self.member_heart, seconds_since_joining)
     
@@ -102,6 +102,7 @@ class SphinxDiscordClient(discord.Client):
     if heartbeats and heartbeats < 10 and seconds_since_creation <= 120 and seconds_since_joining >= 30:
         print("heartbeats", heartbeats, seconds_since_creation, seconds_since_joining)
         reasons.append("Member instantly created and joined as offline. Heartbeats: %u." % heartbeats)
+        del self.member_heart[member.id] # swy: safeguard to get here only once
 
     # swy: for some reason in newer bot accounts there's a mismatch between the member avatar and the profile avatar.       
     if member.avatar != usr.avatar:
@@ -226,7 +227,8 @@ class SphinxDiscordClient(discord.Client):
                 await self.apply_ban_rules(member=m)
 
         # task runs every 30 seconds; infinitely. but run at a faster rate right after someone joins to try to get more heartbeats
-        if (datetime.utcnow() - self.last_member_joined).total_seconds() < 20:
+        print("cadence", datetime.utcnow(), self.last_member_joined, (datetime.utcnow() - self.last_member_joined), (datetime.utcnow() - self.last_member_joined).total_seconds())
+        if (datetime.utcnow() - self.last_member_joined).total_seconds() < 40:
             await asyncio.sleep(1)
         else:
             await asyncio.sleep(30)
