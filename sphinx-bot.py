@@ -44,16 +44,7 @@ class SphinxDiscordClient(discord.Client):
     self.moderation_log = self.get_channel(545777338130890752) # the moderation-log channel
     self.sphinx_guild   = self.get_guild  (409322660070424605) # Sphinx Community
     
-    mem = self.sphinx_guild.members
-    for m in mem:
-        time_since_creation = (m.joined_at - m.created_at)
-        seconds_since_creation = time_since_creation.total_seconds()
-        #print(m.joined_at, m.bot, m.nick, m.name, m.discriminator, m.is_on_mobile(), time_since_creation, seconds_since_creation, "¨¨Possible bot" if (seconds_since_creation < 120) else "Not likely", m.avatar_url, m.id, m.is_avatar_animated(), m.activities)
-        
-        if (seconds_since_creation <= 60 and len(m.roles) <= 1):
-            print("calling on", m)
-            await self.apply_ban_rules(member=m)
-    print("done waiting")
+    #await self.moderation_log.send("Weeeeeeeeee.")
     
   async def apply_ban_rules(self, member=None, on_member_join=False):
     # swy: sanity check; ensure we either have a member
@@ -78,6 +69,7 @@ class SphinxDiscordClient(discord.Client):
     blacklisted_avatars = [
         '5a17f3a2cdcdadba5ad5cdb7a79e59c1', # https://cdn.discordapp.com/avatars/681745190590873610/5a17f3a2cdcdadba5ad5cdb7a79e59c1.png?size=128
         '1de82d515d5910830022864f369cb18e', # https://cdn.discordapp.com/avatars/681864778985242637/1de82d515d5910830022864f369cb18e.png?size=128
+        '67d05954883e8c5ba39f6e61ab681964', # https://cdn.discordapp.com/avatars/682013036659474434/67d05954883e8c5ba39f6e61ab681964.png?size=128
     ]
     
     # swy: avatars repeatedly used by known spammers.
@@ -109,9 +101,8 @@ class SphinxDiscordClient(discord.Client):
             embed.add_field(name='➥ Server nick', value=member.nick)
   
         # swy: send a message to the #off-topic channel
-        await self.channel_test.send('Preemptively banned {0.mention}, probably some automated account. 🔨'.format(member), embed=embed)
-        #await member.guild.ban(member, reason='[Automatic] Suspected bot or automated account.\n' + " - " + "\n - ".join(reasons))
-      
+        await self.moderation_log.send('Preemptively banned {0.mention}, probably some automated account. 🔨'.format(member), embed=embed)
+        await member.guild.ban(member, reason='[Automatic] Suspected bot or automated account.\n' + " - " + "\n - ".join(reasons))
       
   async def on_member_join(self, member):
     time_since_creation    = (member.joined_at - member.created_at)
@@ -145,18 +136,19 @@ class SphinxDiscordClient(discord.Client):
     await asyncio.sleep(5)
     
     while not self.is_closed():
-        #mem = self.sphinx_guild.members
-        #for m in mem:
-        #    time_since_creation = (m.joined_at - m.created_at)
-        #    seconds_since_creation = time_since_creation.total_seconds()
-        #    #print(m.joined_at, m.bot, m.nick, m.name, m.discriminator, m.is_on_mobile(), time_since_creation, seconds_since_creation, "¨¨Possible bot" if (seconds_since_creation < 120) else "Not likely", m.avatar_url, m.id, m.is_avatar_animated(), m.activities)
-        #    
-        #    if (seconds_since_creation <= 60):
-        #        print("calling on", m)
-        #        await self.apply_ban_rules(member=m)
-        #print("done waiting")
-        # task runs every 30 minutes; infinitely
-        await asyncio.sleep(30 * 60)
+        mem = self.sphinx_guild.members
+        for m in mem:
+            time_since_creation = (m.joined_at - m.created_at)
+            seconds_since_creation = time_since_creation.total_seconds()
+            #print(m.joined_at, m.bot, m.nick, m.name, m.discriminator, m.is_on_mobile(), time_since_creation, seconds_since_creation, "¨¨Possible bot" if (seconds_since_creation < 120) else "Not likely", m.avatar_url, m.id, m.is_avatar_animated(), m.activities)
+            
+            if (seconds_since_creation <= 60 * 60 and len(m.roles) <= 1):
+                print("calling on", m)
+                await self.apply_ban_rules(member=m)
+        print("done waiting")
+
+        # task runs every 30 seconds; infinitely
+        await asyncio.sleep(30)
 
 # swy: launch our bot thingie, allow for Ctrl + C
 client = SphinxDiscordClient()
