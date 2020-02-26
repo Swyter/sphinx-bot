@@ -47,7 +47,7 @@ class SphinxDiscordClient(discord.Client):
     # swy: global variables for this client instance, this is loaded right after on_ready, so it's a good place()
     self.channel_test   = self.get_channel(470890531061366787) # Swyter test -- #general
     self.moderation_log = self.get_channel(545777338130890752) # the moderation-log channel
-    self.sphinx_guild   = self.get_guild  (470890531061366784) # Sphinx Community
+  # self.sphinx_guild   = self.get_guild  (470890531061366784) # Sphinx Community
     self.post_init_event.set()
     
     
@@ -178,7 +178,8 @@ class SphinxDiscordClient(discord.Client):
         return
 
     # swy: ensure this is a member of the correct server; check that that it only has the default role
-    m = self.sphinx_guild.get_member(after.id)
+    for guild in self.guilds:
+        m = guild.get_member(after.id)
     
     if m and len(m.roles) <= 1:
         await self.apply_ban_rules(member=m)
@@ -218,26 +219,27 @@ class SphinxDiscordClient(discord.Client):
     print('[i] running loop')
     
     while not self.is_closed():
-        mem = self.sphinx_guild.members
-        for m in mem:
-            time_since_creation    = (m.joined_at - m.created_at)
-            seconds_since_creation = time_since_creation.total_seconds()
-            
-            #print(m.joined_at, m.bot, m.nick, m.name, m.discriminator, m.is_on_mobile(), time_since_creation, seconds_since_creation, "¨¨Possible bot" if (seconds_since_creation < 120) else "Not likely", m.avatar_url, m.id, m.is_avatar_animated(), m.activities)
-            
-            if (seconds_since_creation <= 60 * 60 and len(m.roles) <= 1):
-                print("ssc", m.name, m.discriminator, seconds_since_creation, time_since_creation, m.joined_at, m.created_at)
-                await self.apply_ban_rules(member=m)
+        for guild in self.guilds:
+            mem = guild.members
+            for m in mem:
+                time_since_creation    = (m.joined_at - m.created_at)
+                seconds_since_creation = time_since_creation.total_seconds()
+                
+                #print(m.joined_at, m.bot, m.nick, m.name, m.discriminator, m.is_on_mobile(), time_since_creation, seconds_since_creation, "¨¨Possible bot" if (seconds_since_creation < 120) else "Not likely", m.avatar_url, m.id, m.is_avatar_animated(), m.activities)
+                
+                if (seconds_since_creation <= 60 * 60 and len(m.roles) <= 1):
+                    print("ssc", m.name, m.discriminator, seconds_since_creation, time_since_creation, m.joined_at, m.created_at)
+                    await self.apply_ban_rules(member=m)
 
-        # task runs every 30 seconds; infinitely. but run at a faster rate right after someone joins to try to get more heartbeats
-        print("cadence", datetime.utcnow(), self.last_member_joined, (datetime.utcnow() - self.last_member_joined), (datetime.utcnow() - self.last_member_joined).total_seconds())
-        if (datetime.utcnow() - self.last_member_joined).total_seconds() < 30:
-            cadence = 1
-        else:
-            cadence = 30
-            
+            # task runs every 30 seconds; infinitely. but run at a faster rate right after someone joins to try to get more heartbeats
+            print("cadence", datetime.utcnow(), self.last_member_joined, (datetime.utcnow() - self.last_member_joined), (datetime.utcnow() - self.last_member_joined).total_seconds())
+            if (datetime.utcnow() - self.last_member_joined).total_seconds() < 30:
+                cadence = 1
+            else:
+                cadence = 30
+                
         try:
-            await asyncio.wait_for(self.post_join_event.wait(), timeout=cadence)
+            await asyncio.wait_for(self.post_join_event.wait(), timeout=cadence) # https://stackoverflow.com/a/49632779
         except asyncio.TimeoutError:
             pass
             
