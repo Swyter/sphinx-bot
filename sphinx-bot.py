@@ -32,7 +32,7 @@ class SphinxDiscordClient(discord.Client):
     # create the background task and run it in the background
     self.post_init_event = asyncio.Event()
     self.last_member_joined = datetime.utcfromtimestamp(0)
-    self.member_state = {}
+    self.member_heart = {}
     self.bg_task = self.loop.create_task(self.checker_background_task())
     
     
@@ -85,8 +85,8 @@ class SphinxDiscordClient(discord.Client):
     
     # swy: add a heartbeat detector, to detect a modicum of user activity in new accounts
     if (member.status is not discord.Status.offline and seconds_since_joining <= 120):
-        self.member_state[member.id] += 1
-        print("MMBSTTE", member.id, self.member_state)
+        self.member_heart[member.id] += 1
+        print("MMBSTTE", member.id, self.member_heart, seconds_since_joining)
     
     # swy: avatars repeatedly used by known spammers.
     if usr.avatar in blacklisted_avatars:
@@ -97,9 +97,10 @@ class SphinxDiscordClient(discord.Client):
         reasons.append("Member instantly created with [avatar](%s)." % member.avatar_url)
 
     # swy: when the user is created within seconds of joining but already is set to offline; not humanly possible.
-    heartbeats = self.member_state.get(member.id, 0)
+    heartbeats = self.member_heart.get(member.id, None)
     
-    if heartbeats < 10 and seconds_since_creation <= 120 and seconds_since_joining >= 30:
+    if heartbeats and heartbeats < 10 and seconds_since_creation <= 120 and seconds_since_joining >= 30:
+        print("heartbeats", heartbeats, seconds_since_creation, seconds_since_joining)
         reasons.append("Member instantly created and joined as offline. Heartbeats: %u." % heartbeats)
 
     # swy: for some reason in newer bot accounts there's a mismatch between the member avatar and the profile avatar.       
@@ -114,6 +115,7 @@ class SphinxDiscordClient(discord.Client):
         
         embed.set_thumbnail(url=usr.avatar_url)
         embed.add_field(name='➥ Seconds since creation', value=seconds_since_creation, inline=True)
+        embed.add_field(name='➥ Seconds since joining',  value=seconds_since_joining,  inline=True)
         embed.add_field(name='➥ ID',                     value=member.id,              inline=True)
         embed.add_field(name='➥ Created at',             value=member.created_at,      inline=True)
         embed.add_field(name='➥ Joined at',              value=member.joined_at,       inline=True)
@@ -123,7 +125,7 @@ class SphinxDiscordClient(discord.Client):
             embed.add_field(name='➥ Server nick', value=member.nick)
   
         # swy: send a message to the #off-topic channel
-        await self.moderation_log.send('Preemptively banned {0.mention}, probably some automated account. 🔨'.format(member), embed=embed)
+        #await self.moderation_log.send('Preemptively banned {0.mention}, probably some automated account. 🔨'.format(member), embed=embed)
         await self.channel_test.send  ('Preemptively banned {0.mention}, probably some automated account. 🔨'.format(member), embed=embed)
         #await member.guild.ban(member, reason='[Automatic] Suspected bot or automated account.\n' + " - " + "\n - ".join(reasons))
 
@@ -134,7 +136,10 @@ class SphinxDiscordClient(discord.Client):
     time_since_creation    = (member.joined_at - member.created_at)
     seconds_since_creation = time_since_creation.total_seconds()
     
+    # swy: last_member_joined improves the cadence of checker_background_task(),
+    #      if member_heart is set to zero we know that the member joined in this session, as there is not persistent storage
     self.last_member_joined = datetime.utcnow()
+    self.member_heart[member.id] = 0
     
     print('User joined: ', pprint(member), time.strftime("%Y-%m-%d %H:%M"), member.avatar, member.created_at, "Seconds since account creation: " + str(seconds_since_creation), "Status", member.status, member.mobile_status, member.desktop_status, member.web_status, member.activity)
     reasons = await self.apply_ban_rules(member=member, on_member_join=True)
@@ -161,10 +166,7 @@ class SphinxDiscordClient(discord.Client):
         await self.apply_ban_rules(member=after, on_member_update=True)
   
 
-  async def on_user_update(self, before, after):
-    if len(after.roles) > 1:
-        return
-        
+  async def on_user_update(self, before, after):       
     print("ouu", before, after)
     
     # swy: we only care about avatar changes
@@ -214,11 +216,13 @@ class SphinxDiscordClient(discord.Client):
     while not self.is_closed():
         mem = self.sphinx_guild.members
         for m in mem:
-            time_since_creation = (m.joined_at - m.created_at)
+            time_since_creation    = (m.joined_at - m.created_at)
             seconds_since_creation = time_since_creation.total_seconds()
+            
             #print(m.joined_at, m.bot, m.nick, m.name, m.discriminator, m.is_on_mobile(), time_since_creation, seconds_since_creation, "¨¨Possible bot" if (seconds_since_creation < 120) else "Not likely", m.avatar_url, m.id, m.is_avatar_animated(), m.activities)
             
             if (seconds_since_creation <= 60 * 60 and len(m.roles) <= 1):
+                print("ssc", m.name, m.discriminator, seconds_since_creation, time_since_creation, m.joined_at, m.created_at)
                 await self.apply_ban_rules(member=m)
 
         # task runs every 30 seconds; infinitely. but run at a faster rate right after someone joins to try to get more heartbeats
