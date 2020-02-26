@@ -29,8 +29,8 @@ class SphinxDiscordClient(discord.Client):
     
     self.loop.set_debug(True)
     # create the background task and run it in the background
+    self.post_init_event = asyncio.Event()
     self.bg_task = self.loop.create_task(self.checker_background_task())
-    self.start_loop = False
     
   async def on_ready(self):
     # swy: see checker_background_task() for the initialized "global" variables
@@ -43,7 +43,7 @@ class SphinxDiscordClient(discord.Client):
     self.channel_test   = self.get_channel(470890531061366787) # Swyter test -- #general
     self.moderation_log = self.get_channel(545777338130890752) # the moderation-log channel
     self.sphinx_guild   = self.get_guild  (409322660070424605) # Sphinx Community
-    self.start_loop = True
+    self.post_init_event.set()
     
   async def apply_ban_rules(self, member=None, on_member_join=False):
     # swy: sanity check; ensure we either have a member
@@ -70,6 +70,7 @@ class SphinxDiscordClient(discord.Client):
         '1de82d515d5910830022864f369cb18e', # https://cdn.discordapp.com/avatars/681864778985242637/1de82d515d5910830022864f369cb18e.png?size=128
         '67d05954883e8c5ba39f6e61ab681964', # https://cdn.discordapp.com/avatars/682013036659474434/67d05954883e8c5ba39f6e61ab681964.png?size=128
         '334b09e66c36ffbb0ea946d7641f1018', # https://cdn.discordapp.com/avatars/681774685377003527/334b09e66c36ffbb0ea946d7641f1018.png?size=128
+        'd97d9ee1f09baa485ac06bc33ef644b2', # https://cdn.discordapp.com/avatars/681885340457369632/d97d9ee1f09baa485ac06bc33ef644b2.png?size=128
     ]
     
     # swy: avatars repeatedly used by known spammers.
@@ -79,14 +80,18 @@ class SphinxDiscordClient(discord.Client):
     # swy: when the user is created within seconds of joining but already has a set avatar; not humanly possible.
     if on_member_join and (member.avatar or usr.avatar) and seconds_since_creation <= 30:
         reasons.append("Member instantly created with [avatar](%s)." % member.avatar_url)
-    
-    # swy: for some reason in newer ccounts there's a mismatch between the member avatar and the profile avatar.       
+        
+    # swy: when the user is created within seconds of joining but already is set to offline; not humanly possible.
+    if on_member_join and member.status == discord.Status.offline and seconds_since_creation <= 30:
+        reasons.append("Member instantly created and joined as offline.")
+        
+    # swy: for some reason in newer bot accounts there's a mismatch between the member avatar and the profile avatar.       
     if member.avatar != usr.avatar:
         reasons.append("Avatar mismatch between [member](%s) and [user](%s)." % (member.avatar_url, usr.avatar_url))
     
     #if member.hypesquad and (datetime.utcnow() - member.created_at).days <= 3:
     #    reasons.append("3 day-old account with HypeSquad.")
-    print("reasons", reasons)
+    
     if reasons:
         embed = discord.Embed(colour=discord.Colour(0x1b2148), title='Reasons', description=(" - " + "\n - ".join(reasons)))
         
@@ -105,14 +110,23 @@ class SphinxDiscordClient(discord.Client):
         await self.channel_test.send  ('Preemptively banned {0.mention}, probably some automated account. 🔨'.format(member), embed=embed)
         await member.guild.ban(member, reason='[Automatic] Suspected bot or automated account.\n' + " - " + "\n - ".join(reasons))
 
+    return reasons
+
 
   async def on_member_join(self, member):
     time_since_creation    = (member.joined_at - member.created_at)
     seconds_since_creation = time_since_creation.total_seconds()
     
-    print('User joined: ', pprint(member), time.strftime("%Y-%m-%d %H:%M"), member.avatar, member.created_at, "Seconds since account creation: " + str(seconds_since_creation))
-    await self.apply_ban_rules(member=member, on_member_join=True)
-  
+    print('User joined: ', pprint(member), time.strftime("%Y-%m-%d %H:%M"), member.avatar, member.created_at, "Seconds since account creation: " + str(seconds_since_creation), "Status", member.status)
+    reasons = await self.apply_ban_rules(member=member, on_member_join=True)
+    
+    # swy: while we didn't ban anyone we can still warn about fishy accounts
+    if not reasons:
+        if seconds_since_creation < 60:
+            await self.moderation_log.send('The account {0.mention} was created only {1} seconds ago. Fishy. 🤔'.format(member, seconds_since_creation))
+        elif seconds_since_creation < (60 * 60 * 2) and member.status == discord.Status.offline:
+            await self.moderation_log.send('The account {0.mention} was created only {1} seconds ago and joined offline. Fishy. 🤔'.format(member, seconds_since_creation))
+            
   
   async def on_user_update(self, before, after):
     print(before, after)
@@ -135,8 +149,8 @@ class SphinxDiscordClient(discord.Client):
   async def checker_background_task(self):
     await self.wait_until_ready()
     print('[i] background ban checker ready')
-    while not self.start_loop:
-        await asyncio.sleep(1)
+    
+    await self.post_init_event.wait()
     print('[i] running loop')
     
     while not self.is_closed():
