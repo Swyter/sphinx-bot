@@ -201,6 +201,15 @@ class SphinxDiscordClient(discord.Client):
     # swy: only handle private messages, ensure we are in DMs
     if isinstance(message.channel, discord.DMChannel):
         print("PM:", pprint(message), message.content, time.strftime("%Y-%m-%d %H:%M"))
+        
+        # swy: add an emergency killswitch
+        if message.content.lower().startswith('please stop'):
+            for guild in self.guilds:
+                m = guild.get_member(message.author.id)
+                if m and any(x in str(m.roles) for x in ['THQ Nordic', 'Titan (Owners)', 'Pharaohs (Admins)', 'Demigods (Mods)']):
+                    await message.channel.send("Disengaging.")
+                    await self.logout()
+        
         await asyncio.sleep(random.randint(4, 6))
         async with message.channel.typing():
             # swy: useful for testing
