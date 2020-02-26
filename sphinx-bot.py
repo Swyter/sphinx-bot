@@ -4,9 +4,11 @@ import sys
 import asyncio
 import discord
 from pprint import pprint
+import random
 
 import time
 from datetime import datetime, timedelta
+
 
 # swy: ugly discord.log file boilerplate
 import logging
@@ -142,8 +144,25 @@ class SphinxDiscordClient(discord.Client):
         await self.apply_ban_rules(member=m)
 
 
-  async def on_message_delete(self, message):
-    print('Deleted message:', pprint(message), message.content, time.strftime("%Y-%m-%d %H:%M"))
+  async def on_message(self, message):
+    # swy: thanks!
+    if message.content.lower().startswith('good bot'):
+        await message.add_reaction('🐧')
+        await message.add_reaction('🤖')
+
+    # swy: we do not want the bot to reply to itself or web-hooks
+    if message.author == self.user or message.author.bot:
+        return
+    
+    # swy: only handle private messages, ensure we are in DMs
+    if isinstance(message.channel, discord.DMChannel):
+        await asyncio.sleep(random.randint(4, 6))
+        async with message.channel.typing():
+            # swy: useful for testing
+            messages = ["Weeeeeeeeee", "Groook", "Prreeeeeah", "Krr", "Chrurr", "Waaaeiaah", "Uhhhhwaaeee", "Roooohoo", "Wooheeee", "Woohioooaaa", "Aaarf", "Grrr", "Baaaaaouououo", "Hooorrrr", "Ooof", "Oofgh", "Grkarkarka", "Shheefgg", "Brrbrbr", "Uggeeeewewewww", "Prr-", "Jkafkapfff"]
+            msg = "{0}, {1}.".format(random.choice(messages), random.choice(messages).lower())
+            await asyncio.sleep(random.randint(2, 6))
+            await message.channel.send(msg)
 
 
   async def checker_background_task(self):
@@ -161,9 +180,7 @@ class SphinxDiscordClient(discord.Client):
             #print(m.joined_at, m.bot, m.nick, m.name, m.discriminator, m.is_on_mobile(), time_since_creation, seconds_since_creation, "¨¨Possible bot" if (seconds_since_creation < 120) else "Not likely", m.avatar_url, m.id, m.is_avatar_animated(), m.activities)
             
             if (seconds_since_creation <= 60 * 60 and len(m.roles) <= 1):
-                #print("calling on", m)
                 await self.apply_ban_rules(member=m)
-        #print("done waiting")
 
         # task runs every 30 seconds; infinitely
         await asyncio.sleep(30)
