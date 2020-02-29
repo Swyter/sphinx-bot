@@ -106,12 +106,12 @@ class SphinxDiscordClient(discord.Client):
         reasons.append("Member instantly created and joined as offline. Heartbeats: %u." % heartbeats)
         del self.member_heart[member.id] # swy: safeguard to get here only once
 
-    # swy: for some reason in newer bot accounts there's a mismatch between the member avatar and the profile avatar.       
-    if member.avatar != usr.avatar:
-        reasons.append("Avatar mismatch between [member](%s) and [user](%s)." % (member.avatar_url, usr.avatar_url))
+  # # swy: for some reason in newer bot accounts there's a mismatch between the member avatar and the profile avatar.       
+  # if member.avatar != usr.avatar:
+  #     reasons.append("Avatar mismatch between [member](%s) and [user](%s)." % (member.avatar_url, usr.avatar_url))
     
-    #if member.hypesquad and (datetime.utcnow() - member.created_at).days <= 3:
-    #    reasons.append("3 day-old account with HypeSquad.")
+  #  if member.hypesquad and (datetime.utcnow() - member.created_at).days <= 3:
+  #      reasons.append("3 day-old account with HypeSquad.")
     
     if reasons:
         embed = discord.Embed(colour=discord.Colour(0x1b2148), title='Reasons', description=(" - " + "\n - ".join(reasons)))
