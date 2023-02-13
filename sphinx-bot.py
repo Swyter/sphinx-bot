@@ -83,7 +83,7 @@ class SphinxDiscordClient(discord.Client):
         'f2f5fe1ad679ceb59787cb1b5853168f', # https://cdn.discordapp.com/avatars/682599331433545760/f2f5fe1ad679ceb59787cb1b5853168f.png?size=128
     ]
     
-  # print("   Member status:", member.name, member.discriminator, member.id, member.status, member.mobile_status, member.desktop_status, member.web_status, member.activity, member.avatar, time_since_joining, seconds_since_joining)
+    print("   Member status:", member.name, member.discriminator, member.id, member.status, member.mobile_status, member.desktop_status, member.web_status, member.activity, member.avatar, time_since_joining, seconds_since_joining)
     
     # swy: add a heartbeat detector during the first 120 seconds, to detect a modicum of user activity in new accounts
     if (member.id in self.member_heart and member.status is not discord.Status.offline and seconds_since_joining <= 120):
@@ -130,7 +130,7 @@ class SphinxDiscordClient(discord.Client):
         # swy: send a message to the #off-topic channel
         await self.moderation_log.send('Preemptively banned {0.mention}, probably some automated account. 🔨'.format(member), embed=embed)
         await self.channel_test.send  ('Preemptively banned {0.mention}, probably some automated account. 🔨'.format(member), embed=embed)
-        await member.guild.ban(member, reason='[Automatic] Suspected bot or automated account.\n' + " - " + "\n - ".join(reasons))
+        await member.guild.ban(member, reason='[Automatic] Suspected bot or automated account.\n' + " - " + "\n - ".join(reasons), delete_message_days=0)
 
     return reasons
 
@@ -163,9 +163,9 @@ class SphinxDiscordClient(discord.Client):
   
     print("omu", before, after)
     
-    # swy: we only care about status and activity changes; not role or nickname changes
-    if (before.status == after.status and before.activity == after.activity):
-        return
+#   # swy: we only care about status and activity changes; not role or nickname changes
+#   if (before.status == after.status and before.activity == after.activity):
+#       return
 
     if after and len(after.roles) <= 1:
         await self.apply_ban_rules(member=after, on_member_update=True)
@@ -199,7 +199,7 @@ class SphinxDiscordClient(discord.Client):
     # swy: we do not want the bot to reply to itself or web-hooks
     if message.author == self.user or message.author.bot:
         return
-    
+        
     # swy: only handle private messages, ensure we are in DMs
     if isinstance(message.channel, discord.DMChannel):
         print("PM:", pprint(message), message.content, time.strftime("%Y-%m-%d %H:%M"))
@@ -220,6 +220,11 @@ class SphinxDiscordClient(discord.Client):
             msg = "{0}, {1}.".format(random.choice(messages), random.choice(messages).lower())
             await asyncio.sleep(random.randint(2, 6))
             await message.channel.send(msg)
+    else:
+        for guild in self.guilds:
+            member = guild.get_member(message.author.id)
+            if member and member.id in self.member_heart:
+                self.member_heart[member.id] += 20
 
 
   async def checker_background_task(self):
@@ -235,17 +240,20 @@ class SphinxDiscordClient(discord.Client):
             for m in mem:
                 time_since_creation    = (m.joined_at - m.created_at)
                 seconds_since_creation = time_since_creation.total_seconds()
+                
+                time_since_joining     = (datetime.utcnow() - member.joined_at)
+                seconds_since_joining  = time_since_joining.total_seconds()
 
-                if (seconds_since_creation <= 60 * 60 and len(m.roles) <= 1):
-                  # print("ssc", m.name, m.discriminator, seconds_since_creation, time_since_creation, m.joined_at, m.created_at)
+                if (seconds_since_creation <= 60 * 60 and seconds_since_joining <= 60*60 and len(m.roles) <= 1):
+                    print("ssc", m.name, m.discriminator, seconds_since_creation, time_since_creation, m.joined_at, m.created_at)
                     await self.apply_ban_rules(member=m)
 
             # task runs every 30 seconds; infinitely. but run at a faster rate right after someone joins to try to get more heartbeats
-          # print("cadence", datetime.utcnow(), self.last_member_joined, (datetime.utcnow() - self.last_member_joined), (datetime.utcnow() - self.last_member_joined).total_seconds())
+            print("cadence", datetime.utcnow(), self.last_member_joined, (datetime.utcnow() - self.last_member_joined), (datetime.utcnow() - self.last_member_joined).total_seconds())
             if (datetime.utcnow() - self.last_member_joined).total_seconds() < 30:
-                cadence = 1
+                cadence = 1; print("<-<- set cadence to 1")
             else:
-                cadence = 30
+                cadence = 30; print("<-<- set cadence to 30")
                 
         try:
             await asyncio.wait_for(self.post_join_event.wait(), timeout=cadence) # https://stackoverflow.com/a/49632779
