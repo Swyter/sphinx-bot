@@ -2,9 +2,11 @@
 import os
 import sys
 import asyncio
+import traceback
 import discord
 from pprint import pprint
-import random
+from aiohttp import connector
+import random, signal
 
 import time
 from datetime import datetime, timedelta
@@ -27,13 +29,16 @@ if not 'DISCORD_TOKEN' in os.environ:
 class SphinxDiscordClient(discord.Client):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
-    
+
+  async def setup_hook(self):
     self.loop.set_debug(True)
+
     # create the background task and run it in the background
     self.post_init_event = asyncio.Event()
     self.post_join_event = asyncio.Event()
     self.last_member_joined = datetime.utcfromtimestamp(0)
     self.member_heart = {}
+
     self.bg_task = self.loop.create_task(self.checker_background_task())
     
     
@@ -186,8 +191,8 @@ class SphinxDiscordClient(discord.Client):
         await self.apply_ban_rules(member=m)
 
 
-  async def on_message_delete(self, message):
-    print('Deleted message:', pprint(message), message.content, time.strftime("%Y-%m-%d %H:%M"))
+  async def on_message_delete(self, message: discord.Message):
+    print('Deleted message:', pprint(message), message.content, time.strftime("%Y-%m-%d %H:%M"), message.channel.name, message.author)
 
 
   async def on_message(self, message):
@@ -259,18 +264,36 @@ class SphinxDiscordClient(discord.Client):
             await asyncio.wait_for(self.post_join_event.wait(), timeout=cadence) # https://stackoverflow.com/a/49632779
         except asyncio.TimeoutError:
             pass
-            
+
+# --
+
+intents = discord.Intents.default()
+intents.members = True
+
 # swy: launch our bot thingie, allow for Ctrl + C
-client = SphinxDiscordClient()
+client = SphinxDiscordClient(intents=intents)
+loop = asyncio.get_event_loop()
+
+def handle_exit():
+    raise KeyboardInterrupt
+
+if os.name != 'nt':
+  loop.add_signal_handler(signal.SIGTERM, handle_exit, signal.SIGTERM)
+  loop.add_signal_handler(signal.SIGABRT, handle_exit, signal.SIGABRT, None)
+
 
 while True:
   try:
-    client.loop.run_until_complete(client.start(os.environ["DISCORD_TOKEN"]))
+    loop.run_until_complete(client.start(os.environ["DISCORD_TOKEN"]))
+    
+  except connector.ClientConnectorError:
+    traceback.print_exc()
+    pass
+
+  # swy: cancel all lingering tasks and close shop
   except KeyboardInterrupt:
-    client.loop.run_until_complete(client.logout())
-    # cancel all lingering tasks
-  except e:
-    print(e)
-  finally:
-    client.loop.close()
+    loop.run_until_complete(client.change_presence(status=discord.Status.offline))
+    print("[i] ctrl-c detected")
+    loop.run_until_complete(client.close())
+    print("[-] exiting...")
     sys.exit(0)
