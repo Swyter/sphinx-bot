@@ -9,7 +9,7 @@ from aiohttp import connector
 import random, signal
 
 import time
-from datetime import datetime, timedelta
+import datetime
 
 # swy: ugly discord.log file boilerplate
 import logging
@@ -50,7 +50,7 @@ class SphinxDiscordGoofyLizard(discord.ext.commands.Cog):
         if message.content.lower().startswith('please stop'):
             for guild in self.bot.guilds:
                 m = guild.get_member(message.author.id)
-                if m and any(x in str(m.roles) for x in ['THQ Nordic', 'Titan (Owners)', 'Pharaohs (Admins)', 'Demigods (Mods)']):
+                if m and any(x in str(m.roles) for x in ['THQ Nordic', 'Titan (Owners)', 'Pharaohs (Admins)', 'Demigods (Mods)', 'Ambassador']):
                     await message.add_reaction('👌')
                     await message.channel.send("Disengaging.")
                     # swy: make it go inmediately offline and then exit the client
@@ -75,6 +75,7 @@ questions = [
   {'question': 'Which of these things belong to the game?',       'answers_good': ["Gold Scarabs", "Sword of Osiris", "Shield of Osiris", "Hands of Amun", "Blowpipe (and magic darts)", "Capture Beetles", "Wings of Ibis"], 'answers_bad': ["Green Rupees", "Master Sword", "Boomerang", "Ocarina", "Fairy Slingshot", "Machete of Time", "Blue Cuccos", "Morph Gun" ] },
 ]
 
+# swy: keep in mind that the bot needs the «Manage Roles» permission for user.remove_roles() and user.add_roles() to work.
 class TldDiscordValidator(discord.ext.commands.Cog):
   def __init__(self, bot: discord.ext.commands.Bot, log_to_channel):
     self.bot = bot
@@ -215,7 +216,6 @@ class SphinxDiscordClient(discord.ext.commands.Bot):
     
     self.portal_god     = self.get_channel(1225464253415424022) # the #portal-god channel 
     self.portal_god_log = self.get_channel(1225486542597001316) # the #portal-god-log channel 
-    self.post_init_event.set()
 
   async def log_to_channel(self, user: discord.Member, text):
     print(user, text)
