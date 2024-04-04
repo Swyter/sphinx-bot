@@ -3,7 +3,7 @@ import os
 import sys
 import asyncio
 import traceback
-import discord
+import discord, discord.ext.commands, discord.ext.tasks
 from pprint import pprint
 from aiohttp import connector
 import random, signal
@@ -184,7 +184,7 @@ class TldDiscordValidator(discord.ext.commands.Cog):
 
 
 # swy: implement our bot thingie
-class SphinxDiscordClient(discord.Client):
+class SphinxDiscordClient(discord.ext.commands.Bot):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
 
@@ -222,7 +222,7 @@ intents = discord.Intents.default()
 intents.members = True
 
 # swy: launch our bot thingie, allow for Ctrl + C
-client = SphinxDiscordClient(intents=intents)
+client = SphinxDiscordClient(intents=intents, command_prefix=None)
 loop = asyncio.get_event_loop()
 
 def handle_exit():
