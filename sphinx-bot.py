@@ -228,7 +228,7 @@ intents = discord.Intents.default()
 intents.members = True
 
 # swy: launch our bot thingie, allow for Ctrl + C
-client = SphinxDiscordClient(intents=intents, command_prefix=None)
+client = SphinxDiscordClient(intents=intents, command_prefix='goofyl')
 loop = asyncio.get_event_loop()
 
 def handle_exit():
