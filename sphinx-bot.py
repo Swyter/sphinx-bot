@@ -39,21 +39,25 @@ class SphinxDiscordGoofyLizard(discord.ext.commands.Cog):
         await message.add_reaction('🤖')
 
     # swy: we do not want the bot to reply to itself or web-hooks
-    if message.author == self.user or message.author.bot:
+    if message.author == self.bot.user or message.author.bot:
         return
-        
+
     # swy: only handle private messages, ensure we are in DMs
     if isinstance(message.channel, discord.DMChannel):
         print("PM:", pprint(message), message.content, time.strftime("%Y-%m-%d %H:%M"))
         
         # swy: add an emergency killswitch
         if message.content.lower().startswith('please stop'):
-            for guild in self.guilds:
+            for guild in self.bot.guilds:
                 m = guild.get_member(message.author.id)
                 if m and any(x in str(m.roles) for x in ['THQ Nordic', 'Titan (Owners)', 'Pharaohs (Admins)', 'Demigods (Mods)']):
                     await message.add_reaction('👌')
                     await message.channel.send("Disengaging.")
-                    await self.logout()
+                    # swy: make it go inmediately offline and then exit the client
+                    await self.bot.change_presence(status=discord.Status.offline)
+                    await self.bot.close()
+                    print(f"[!] Moderation user {message.author} requested an emergency shutdown")
+                    return
         
         await asyncio.sleep(random.randint(4, 6))
         async with message.channel.typing():
@@ -91,6 +95,7 @@ class TldDiscordValidator(discord.ext.commands.Cog):
         def __init__(self):
           super().__init__(timeout=None)
           self.add_item(discord.ui.Button(label="Visit the Steam Community page", style=discord.ButtonStyle.link, url="https://steamcommunity.com/app/606710"))
+          #self.add_item(discord.ui.Button(label="Submit bug reports",             style=discord.ButtonStyle.link, url="https://redmine.thqnordic.com/news/15"))
 
         @discord.ui.button(label="Verify my account", style=discord.ButtonStyle.blurple, custom_id='tld:verify')
         async def blurple_button(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -213,6 +218,7 @@ class SphinxDiscordClient(discord.ext.commands.Bot):
     self.post_init_event.set()
 
   async def log_to_channel(self, user: discord.Member, text):
+    print(user, text)
     if self.portal_god_log:
       await self.portal_god_log.send(f"{user.mention} `{user.name}#{user.discriminator} ({user.id})` {text}")
     
