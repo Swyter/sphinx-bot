@@ -199,7 +199,8 @@ class TldDiscordValidator(discord.ext.commands.Cog):
             await message.delete()
 
   @discord.ext.commands.Cog.listener()
-  async def on_member_leave(self, member: discord.Member):
+  async def on_member_remove(self, member: discord.Member):
+
     if self.unverified_role not in member.roles:
       return
     
@@ -240,9 +241,13 @@ class SphinxDiscordClient(discord.ext.commands.Bot):
     self.portal_god_log = self.get_channel(1225486542597001316) # the #portal-god-log channel 
 
   async def log_to_channel(self, user: discord.Member, text):
-    print(user, text)
-    if self.portal_god_log:
-      await self.portal_god_log.send(f"{user.mention} `{user.name}#{user.discriminator} ({user.id})` {text}")
+    print(user, text); send_to_channel = user.guild.system_channel
+
+    if self.portal_god_log and self.portal_god_log.guild == user.guild:
+      send_to_channel = self.portal_god_log
+    
+    await send_to_channel.send(f"{user.mention} `{user.name}#{user.discriminator} ({user.id})` {text}")
+      
 # --
 
 intents = discord.Intents.default()
