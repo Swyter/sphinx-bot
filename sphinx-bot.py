@@ -16,9 +16,14 @@ import logging
 
 logger = logging.getLogger('discord')
 logger.setLevel(logging.INFO)
-handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
-handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
-logger.addHandler(handler)
+handler_to_file = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+handler_to_file.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+logger.addHandler(handler_to_file)
+
+handler_to_screen = logging.StreamHandler()
+handler_to_screen.setLevel(logging.INFO)
+handler_to_screen.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+logger.addHandler(handler_to_screen)
 
 # swy: exit if we don't have a valid bot token
 if not 'DISCORD_TOKEN' in os.environ:
