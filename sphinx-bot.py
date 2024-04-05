@@ -198,6 +198,19 @@ class TldDiscordValidator(discord.ext.commands.Cog):
           if message.is_system() and message.type == discord.MessageType.new_member and message.author == member:
             await message.delete()
 
+  @discord.ext.commands.Cog.listener()
+  async def on_member_leave(self, member: discord.Member):
+    if self.unverified_role not in member.roles:
+      return
+    
+    print('User left: ', pprint(member), time.strftime("%Y-%m-%d %H:%M"))
+    await client.log_to_channel(member, f" has **left** on its own.")
+
+    # swy: remove the welcome message from #general if we kick them out, suggested by @Medea Fleecestealer
+    async for message in member.guild.system_channel.history(limit=30):
+      if message.is_system() and message.type == discord.MessageType.new_member and message.author == member:
+        await message.delete()
+
 # --
 # swy: implement our base discord.py bot thingie; it hosts the "cogs" we can attach to add extra functionality
 #      it doesn't really do anything else by itself, other than having a common audit channel log function
