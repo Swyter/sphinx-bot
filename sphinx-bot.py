@@ -79,7 +79,7 @@ class SphinxDiscordGoofyLizard(discord.ext.commands.Cog):
 questions = [
   {'question': 'Which of these characters belong to the game?',   'answers_good': ["Sphinx", "Tutankhamen", "Imhotep", "Horus", "Nefertiti"],                                                                                 'answers_bad': ["Link (the princess)", "Zelda (the guy with the sword)", "Master Chef", "The Four Horsemen", "Amaterasu", "Pepsiman", "Someone named Luigi" ]},
   {'question': 'Which of these locations are part of game?',      'answers_good': ["Luxor", "Heliopolis", "Abydos", "Uruk"],                                                                                                  'answers_bad': ["London", "Madrid", "Tokyo", "Athens", "Narnia", "Minas Tirith", "Hyrule", "Hogwarts", "Death Star"                      ]},
-  {'question': 'Which of these things belong to the game?',       'answers_good': ["Gold Scarabs", "Sword of Osiris", "Shield of Osiris", "Hands of Amun", "Blowpipe (and magic darts)", "Capture Beetles", "Wings of Ibis"], 'answers_bad': ["Green Rupees", "Master Sword", "Boomerang", "Ocarina", "Fairy Slingshot", "Machete of Time", "Blue Cuccos", "Morph Gun" ]},
+  {'question': 'Which of these things belong to the game?',       'answers_good': ["Gold Scarabs", "Blade of Osiris", "Shield of Osiris", "Hands of Amun", "Blowpipe (and magic darts)", "Capture Beetles", "Wings of Ibis"], 'answers_bad': ["Green Rupees", "Master Sword", "Boomerang", "Ocarina", "Fairy Slingshot", "Machete of Time", "Blue Cuccos", "Morph Gun" ]},
 ]
 
 # swy: keep in mind that the bot needs the «Manage Roles» permission for user.remove_roles() and user.add_roles() to work.
