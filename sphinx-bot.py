@@ -210,6 +210,7 @@ class TldDiscordValidator(discord.ext.commands.Cog):
     # swy: remove the welcome message from #general if we kick them out, suggested by @Medea Fleecestealer
     async for message in member.guild.system_channel.history(limit=30):
       if message.is_system() and message.type == discord.MessageType.new_member and message.author == member:
+        print(message, pprint(message))
         await message.delete()
 
 # --
@@ -234,6 +235,7 @@ class SphinxDiscordClient(discord.ext.commands.Bot):
     print(self.user.name)
     print(self.user.id)
     print('------')
+    await self.change_presence(activity=discord.CustomActivity(name='Baaaaaouououo, krr.'))
     
     # swy: global variables for this client instance, all the other background tasks wait for post_init_event, so it's a good place
     self.channel_test   = self.get_channel( 470890531061366787) # Swyter test -- #general
