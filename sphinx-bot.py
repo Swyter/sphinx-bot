@@ -89,7 +89,7 @@ class TldDiscordValidator(discord.ext.commands.Cog):
     self.channel_test = self.bot.get_channel( 470890531061366787) # Swyter test -- #general
     self.channel_door = self.bot.get_channel(1225464253415424022) # Sphinx and the Cursed Mummy -- #portal-god
 
-    self.unverified_role = discord.utils.get(self.channel_door.guild.roles, name="Unverified")
+    self.unverified_role = unverified_role = discord.utils.get(self.channel_door.guild.roles, name="Unverified")
     self.kick_stuck_members.start()
 
     # swy: there's a permanent message with a button (TldVerifyPresentation), when clicking it we
@@ -139,8 +139,8 @@ class TldDiscordValidator(discord.ext.commands.Cog):
                 await interaction.response.send_message(f"Awesome! I like {select.values[0]} too!\nNow you are in. Head over to {interaction.guild.rules_channel.mention}.", ephemeral=True)
 
                 # swy: unquarantine the user by getting rid of this role
-                if self.unverified_role:
-                  await interaction.user.remove_roles(self.unverified_role)
+                if unverified_role:
+                  await interaction.user.remove_roles(unverified_role)
 
                 await client.log_to_channel(interaction.user, f"has **passed** validation by responding {rand_answers_good}.")
 
@@ -164,7 +164,7 @@ class TldDiscordValidator(discord.ext.commands.Cog):
     '''
 
   @discord.ext.commands.Cog.listener()
-  async def on_member_join(self, member : discord.Member):
+  async def on_member_join(self, member: discord.Member):
     print('User joined: ', pprint(member), time.strftime("%Y-%m-%d %H:%M"))
     await client.log_to_channel(member, f" has **joined**. Account created at {member.created_at}. Quarantining and adding *Unverified* role.")
 
