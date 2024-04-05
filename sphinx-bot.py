@@ -193,6 +193,11 @@ class TldDiscordValidator(discord.ext.commands.Cog):
         await client.log_to_channel(member, f"is getting **kicked** for being on quarantine for too long.")
         await member.kick(reason='bot: waited too long before passing the test')
 
+        # swy: remove the welcome message from #general if we kick them out, suggested by @Medea Fleecestealer
+        async for message in member.guild.system_channel.history(limit=30):
+          if message.is_system() and message.type == discord.MessageType.new_member and message.author == member:
+            await message.delete()
+
 # --
 # swy: implement our base discord.py bot thingie; it hosts the "cogs" we can attach to add extra functionality
 #      it doesn't really do anything else by itself, other than having a common audit channel log function
