@@ -127,7 +127,7 @@ class TldDiscordValidator(discord.ext.commands.Cog):
 
           class TldVerifyQuiz(discord.ui.View):
               def __init__(self):
-                super().__init__(timeout=30)
+                super().__init__(timeout=60)
                 self.rand_answers_good = rand_answers_good
 
               # swy: make a selector box with three good and three bad selectable options
