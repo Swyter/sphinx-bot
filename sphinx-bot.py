@@ -203,7 +203,6 @@ class TldDiscordValidator(discord.ext.commands.Cog):
     was_kicked = False; five_seconds_ago = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds=5)
 
     async for entry in member.guild.audit_logs(action=discord.AuditLogAction.kick, user=self.bot.user, limit=3, after=five_seconds_ago):
-      print(entry)
       if entry.target == member:
         was_kicked = True
         break
@@ -216,6 +215,7 @@ class TldDiscordValidator(discord.ext.commands.Cog):
       if message and message.is_system() and message.type == discord.MessageType.new_member and message.author == member:
         print(message, pprint(message))
         await message.delete()
+        break
 
 # --
 # swy: implement our base discord.py bot thingie; it hosts the "cogs" we can attach to add extra functionality
