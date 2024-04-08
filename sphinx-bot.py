@@ -77,9 +77,9 @@ class SphinxDiscordGoofyLizard(discord.ext.commands.Cog):
 # swy: this discord.py cog applies an «Unverified» role to any account that properly joins the server (i.e. not )
 # swy: the final question will have three good and three bad answers, so have some extras of each to mix them up
 questions = [
-  {'question': 'Which characters belong to the game?',   'answers_good': ["Sphinx", "Tutankhamen", "Imhotep", "Horus", "Nefertiti"],                                                                                 'answers_bad': ["Link (the princess)", "Zelda (the guy with the sword)", "Master Chef", "The Four Horsemen", "Amaterasu", "Pepsiman", "Someone named Luigi" ]},
-  {'question': 'Which locations are part of the game?',  'answers_good': ["Luxor", "Heliopolis", "Abydos", "Uruk"],                                                                                                  'answers_bad': ["London", "Madrid", "Tokyo", "Athens", "Narnia", "Minas Tirith", "Hyrule", "Hogwarts", "Death Star"                      ]},
-  {'question': 'Which things belong to the game?',       'answers_good': ["Gold Scarabs", "Blade of Osiris", "Shield of Osiris", "Hands of Amun", "Blowpipe (and magic darts)", "Capture Beetles", "Wings of Ibis"], 'answers_bad': ["Green Rupees", "Master Sword", "Boomerang", "Ocarina", "Fairy Slingshot", "Machete of Time", "Blue Cuccos", "Morph Gun" ]},
+  {'question': 'Which character belongs to the game?', 'answers_good': ["Sphinx", "Tutankhamen", "Imhotep", "Horus", "Nefertiti"],                                                                                 'answers_bad': ["Link (the princess)", "Zelda (the guy with the sword)", "Master Chef", "The Four Horsemen", "Amaterasu", "Pepsiman", "Someone named Luigi" ]},
+  {'question': 'Which location is part of the game?',  'answers_good': ["Luxor", "Heliopolis", "Abydos", "Uruk"],                                                                                                  'answers_bad': ["London", "Madrid", "Tokyo", "Athens", "Narnia", "Minas Tirith", "Hyrule", "Hogwarts", "Death Star"                      ]},
+  {'question': 'Which thing belongs to the game?',     'answers_good': ["Gold Scarabs", "Blade of Osiris", "Shield of Osiris", "Hands of Amun", "Blowpipe (and magic darts)", "Capture Beetles", "Wings of Ibis"], 'answers_bad': ["Green Rupees", "Master Sword", "Boomerang", "Ocarina", "Fairy Slingshot", "Machete of Time", "Blue Cuccos", "Morph Gun" ]},
 ]
 
 # swy: keep in mind that the bot needs the «Manage Roles» permission for user.remove_roles() and user.add_roles() to work.
@@ -117,8 +117,8 @@ class TldDiscordValidator(discord.ext.commands.Cog):
           random.shuffle(rand_quest['answers_bad' ])
 
           # swy: get the first three of each after shuffling
-          rand_answers_good = rand_quest['answers_good'][:3]
-          rand_answers_bad  = rand_quest['answers_bad' ][:3]
+          rand_answers_good = rand_quest['answers_good'][:1]
+          rand_answers_bad  = rand_quest['answers_bad' ][:2]
 
           # swy: fill out the combobox; we need to randomize the order again after mixing the good and bad ones
           question_text = rand_quest['question']
@@ -127,13 +127,18 @@ class TldDiscordValidator(discord.ext.commands.Cog):
 
           class TldVerifyQuiz(discord.ui.View):
               def __init__(self):
-                super().__init__(timeout=60)
+                super().__init__(timeout=120)
                 self.rand_answers_good = rand_answers_good
 
               # swy: make a selector box with three good and three bad selectable options
-              @discord.ui.select(placeholder=question_text, min_values=3, max_values=3, options=ans_options)
+              @discord.ui.select(placeholder=question_text, min_values=1, max_values=1, options=ans_options)
               async def select_menu(self, interaction: discord.Interaction, select: discord.ui.Select):
                 print("click")
+
+                # swy: make it 'think' when this has complete its function instead of answering again and again
+                if unverified_role not in interaction.user.roles and len(interaction.user.roles) == 1:
+                  await interaction.response.defer(thinking=True)
+                  return
 
                 # swy: are all the options correct? even one bad one will cause it to fail
                 if len(set(select.values).intersection(rand_answers_good)) != len(rand_answers_good):
@@ -145,11 +150,9 @@ class TldDiscordValidator(discord.ext.commands.Cog):
                 if unverified_role:
                   await interaction.user.remove_roles(unverified_role)
 
-                # swy: give the discord client a couple of secconds to refresh the available channel list after getting rid of the probation role.
+                # swy: give the discord client a couple of seconds to refresh the available channel list after getting rid of the probation role.
                 #      gotta love this stuff, otherwise it shows #not available instead of #rules.
                 await interaction.response.send_message(f"Awesome! I like {select.values[0]} too!\nNow you are in. Head over to {interaction.guild.rules_channel.mention}.", ephemeral=True)
-
-
                 await client.log_to_channel(interaction.user, f"has **passed** validation by responding {rand_answers_good}.")
 
                 # swy: add a distinctive «badge» in the join log message to distinguish it from the people that get kicked out
