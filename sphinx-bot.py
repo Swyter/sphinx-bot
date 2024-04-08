@@ -147,7 +147,6 @@ class TldDiscordValidator(discord.ext.commands.Cog):
 
                 # swy: give the discord client a couple of secconds to refresh the available channel list after getting rid of the probation role.
                 #      gotta love this stuff, otherwise it shows #not available instead of #rules.
-                await asyncio.sleep(1)
                 await interaction.response.send_message(f"Awesome! I like {select.values[0]} too!\nNow you are in. Head over to {interaction.guild.rules_channel.mention}.", ephemeral=True)
 
 
@@ -179,7 +178,7 @@ class TldDiscordValidator(discord.ext.commands.Cog):
 
     if self.unverified_role:
       await member.add_roles(self.unverified_role)
-      mes = await self.channel_door.send(f"{member.mention}") # swy: ping them to make the hidden channel pop up more
+      mes = await self.channel_door.send(f"{member.mention} Hey, come here!") # swy: ping them to make the hidden channel pop up more
       await mes.delete(delay=2) # swy: phantom ping
 
   @discord.ext.tasks.loop(seconds=30)
