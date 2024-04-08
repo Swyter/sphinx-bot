@@ -141,11 +141,15 @@ class TldDiscordValidator(discord.ext.commands.Cog):
                   await client.log_to_channel(interaction.user, f"has **failed** validation by responding {select.values}.")
                   return
 
-                await interaction.response.send_message(f"Awesome! I like {select.values[0]} too!\nNow you are in. Head over to {interaction.guild.rules_channel.mention}.", ephemeral=True)
-
                 # swy: unquarantine the user by getting rid of this role
                 if unverified_role:
                   await interaction.user.remove_roles(unverified_role)
+
+                # swy: give the discord client a couple of secconds to refresh the available channel list after getting rid of the probation role.
+                #      gotta love this stuff, otherwise it shows #not available instead of #rules.
+                await asyncio.sleep(1)
+                await interaction.response.send_message(f"Awesome! I like {select.values[0]} too!\nNow you are in. Head over to {interaction.guild.rules_channel.mention}.", ephemeral=True)
+
 
                 await client.log_to_channel(interaction.user, f"has **passed** validation by responding {rand_answers_good}.")
 
