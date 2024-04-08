@@ -122,7 +122,7 @@ class TldDiscordValidator(discord.ext.commands.Cog):
 
           # swy: fill out the combobox; we need to randomize the order again after mixing the good and bad ones
           question_text = rand_quest['question']
-          answers_all   = (rand_answers_good + rand_answers_bad); random.shuffle(answers_all)
+          answers_all   = (rand_answers_good + rand_answers_bad); random.shuffle(answers_all); print("answers:", answers_all)
           ans_options   = [discord.SelectOption(label=cur_answer)  for cur_answer in answers_all]
 
           class TldVerifyQuiz(discord.ui.View):
@@ -151,11 +151,11 @@ class TldDiscordValidator(discord.ext.commands.Cog):
 
                 # swy: add a distinctive «badge» in the join log message to distinguish it from the people that get kicked out
                 async for message in interaction.guild.system_channel.history(limit=30):
-                  if message.is_system() and message.type == discord.MessageType.new_member and message.author == interaction.user:
+                  if message and message.is_system() and message.type == discord.MessageType.new_member and message.author == interaction.user:
                     await message.add_reaction('💯')
                     break
 
-          await interaction.response.send_message("Respond to the following question:", view=TldVerifyQuiz(), ephemeral=True)
+          await interaction.response.send_message("Respond to the following question, or click on the button above again to get a different one:", view=TldVerifyQuiz(), ephemeral=True)
 
     # swy: make the first post's buttons persistent across bot reboots
     self.bot.add_view(TldVerifyPresentation())
