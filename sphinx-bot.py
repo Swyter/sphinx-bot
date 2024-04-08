@@ -137,7 +137,7 @@ class TldDiscordValidator(discord.ext.commands.Cog):
 
                 # swy: make it 'think' when this has complete its function instead of answering again and again
                 if unverified_role not in interaction.user.roles and len(interaction.user.roles) == 1:
-                  await interaction.response.defer(thinking=True)
+                  #await interaction.response.defer(thinking=True, ephemeral=True)
                   return
 
                 # swy: are all the options correct? even one bad one will cause it to fail
