@@ -193,11 +193,6 @@ class TldDiscordValidator(discord.ext.commands.Cog):
         await client.log_to_channel(member, f"is getting **kicked** for being on quarantine for too long.")
         await member.kick(reason='bot: waited too long before passing the test')
 
-        # swy: remove the welcome message from #general if we kick them out, suggested by @Medea Fleecestealer
-        async for message in member.guild.system_channel.history(limit=30):
-          if message.is_system() and message.type == discord.MessageType.new_member and message.author == member:
-            await message.delete()
-
   @discord.ext.commands.Cog.listener()
   async def on_member_remove(self, member: discord.Member):
 
@@ -205,11 +200,20 @@ class TldDiscordValidator(discord.ext.commands.Cog):
       return
     
     print('User left: ', pprint(member), time.strftime("%Y-%m-%d %H:%M"))
-    await client.log_to_channel(member, f" has **left** on its own.")
+    was_kicked = False; five_seconds_ago = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds=5)
+
+    async for entry in member.guild.audit_logs(action=discord.AuditLogAction.kick, user=self.bot.user, limit=3, after=five_seconds_ago):
+      print(entry)
+      if entry.target == member:
+        was_kicked = True
+        break
+      
+    if not was_kicked:
+      await client.log_to_channel(member, f" has **left** on its own.")
 
     # swy: remove the welcome message from #general if we kick them out, suggested by @Medea Fleecestealer
     async for message in member.guild.system_channel.history(limit=30):
-      if message.is_system() and message.type == discord.MessageType.new_member and message.author == member:
+      if message and message.is_system() and message.type == discord.MessageType.new_member and message.author == member:
         print(message, pprint(message))
         await message.delete()
 
