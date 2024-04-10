@@ -216,12 +216,13 @@ class TldDiscordValidator(discord.ext.commands.Cog):
     if not was_kicked:
       await client.log_to_channel(member, f" has **left** on its own.")
 
+    five_seconds_before_joining = member.joined_at - datetime.timedelta(seconds=5)
+
     # swy: remove the welcome message from #general if we kick them out, suggested by @Medea Fleecestealer
-    async for message in member.guild.system_channel.history(limit=30):
+    async for message in member.guild.system_channel.history(limit=60, after=five_seconds_before_joining):
       if message and message.is_system() and message.type == discord.MessageType.new_member and message.author == member:
-        print(message, pprint(message))
+        print("trying to delete", message, pprint(message))
         await message.delete()
-        break
 
 # --
 # swy: implement our base discord.py bot thingie; it hosts the "cogs" we can attach to add extra functionality
