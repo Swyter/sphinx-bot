@@ -156,8 +156,9 @@ class TldDiscordValidator(discord.ext.commands.Cog):
                 await client.log_to_channel(interaction.user, f"has **passed** validation by responding {rand_answers_good}.")
 
                 # swy: add a distinctive «badge» in the join log message to distinguish it from the people that get kicked out
-                async for message in interaction.guild.system_channel.history(limit=30):
+                async for message in interaction.guild.system_channel.history(limit=60):
                   if message and message.is_system() and message.type == discord.MessageType.new_member and message.author == interaction.user:
+                    print("trying to add reaction", message, pprint(message))
                     await message.add_reaction('💯')
                     break
 
@@ -265,6 +266,9 @@ class SphinxDiscordClient(discord.ext.commands.Bot):
 
 intents = discord.Intents.default()
 intents.members = True
+intents.dm_messages = True
+intents.guild_messages = True
+intents.message_content = True
 
 # swy: launch our bot thingie, allow for Ctrl + C
 client = SphinxDiscordClient(intents=intents, command_prefix='goofyl')
