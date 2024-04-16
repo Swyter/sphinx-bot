@@ -23,7 +23,7 @@ logger.addHandler(handler_to_file)
 handler_to_screen = logging.StreamHandler()
 handler_to_screen.setLevel(logging.INFO)
 handler_to_screen.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
-logger.addHandler(handler_to_screen)
+#logger.addHandler(handler_to_screen)
 
 # swy: exit if we don't have a valid bot token
 if not 'DISCORD_TOKEN' in os.environ:
