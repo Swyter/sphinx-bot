@@ -95,6 +95,7 @@ class TldDiscordValidator(discord.ext.commands.Cog):
     self.channel_door = self.bot.get_channel(1225464253415424022) # Sphinx and the Cursed Mummy -- #portal-god
 
     self.unverified_role = unverified_role = discord.utils.get(self.channel_door.guild.roles, name="Unverified")
+    self.memberpass_role = memberpass_role = discord.utils.get(self.channel_door.guild.roles, name="Member")
     self.kick_stuck_members.start()
 
     # swy: there's a permanent message with a button (TldVerifyPresentation), when clicking it we
@@ -149,6 +150,7 @@ class TldDiscordValidator(discord.ext.commands.Cog):
                 # swy: unquarantine the user by getting rid of this role
                 if unverified_role:
                   await interaction.user.remove_roles(unverified_role)
+                  await interaction.user.add_roles(memberpass_role)
 
                 # swy: give the discord client a couple of seconds to refresh the available channel list after getting rid of the probation role.
                 #      gotta love this stuff, otherwise it shows #not available instead of #rules.
