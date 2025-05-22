@@ -205,24 +205,38 @@ class TldDiscordValidator(discord.ext.commands.Cog):
   @discord.ext.commands.Cog.listener()
   async def on_member_remove(self, member: discord.Member):
 
-    if self.unverified_role not in member.roles:
+    # swy: ignore users (with more roles than just this and @everyone) that may have this role for testing or to mess around
+    if len(member.roles) > 2:
+      return
+    
+    # swy: only delete welcome messages from members who very recently joined (< 20 hours), don't delete stuff in the backlog from way back
+    then = member.joined_at; now = datetime.datetime.now(datetime.timezone.utc)
+    if (now - then) > datetime.timedelta(hours=20):
       return
     
     print('User left: ', pprint(member), time.strftime("%Y-%m-%d %H:%M"))
+    # swy: find if the user was kicked by the bot or moderation
     was_kicked = False; five_seconds_ago = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds=5)
 
     async for entry in member.guild.audit_logs(action=discord.AuditLogAction.kick, user=self.bot.user, limit=3, after=five_seconds_ago):
       if entry.target == member:
         was_kicked = True
         break
-      
-    if not was_kicked:
+
+    # swy: also find if it was banned; no way to search by multiple action= at the same time, so do it twice
+    was_banned = False
+    async for entry in member.guild.audit_logs(action=discord.AuditLogAction.ban, user=self.bot.user, limit=3, after=five_seconds_ago):
+      if entry.target == member:
+        was_banned = True
+        break
+
+    if not (was_kicked or was_banned):
       await client.log_to_channel(member, f" has **left** on its own.")
 
     five_seconds_before_joining = member.joined_at - datetime.timedelta(seconds=5)
 
-    # swy: remove the welcome message from #general if we kick them out, suggested by @Medea Fleecestealer
-    async for message in member.guild.system_channel.history(limit=60, after=five_seconds_before_joining):
+    # swy: remove the welcome message from #general if we kick them out or they leave after passing the quiz, suggested by @Medea Fleecestealer
+    async for message in member.guild.system_channel.history(limit=30, after=five_seconds_before_joining):
       if message and message.is_system() and message.type == discord.MessageType.new_member and message.author == member:
         print("trying to delete", message, pprint(message))
         await message.delete()
