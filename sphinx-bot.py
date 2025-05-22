@@ -205,7 +205,7 @@ class TldDiscordValidator(discord.ext.commands.Cog):
   @discord.ext.commands.Cog.listener()
   async def on_member_remove(self, member: discord.Member):
 
-    # swy: ignore users (with more roles than just this and @everyone) that may have this role for testing or to mess around
+    # swy: ignore users (with more roles than just Unverified + @everyone, or Member + @everyone) that may have these roles for testing or to mess around
     if len(member.roles) > 2:
       return
     
