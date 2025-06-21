@@ -224,8 +224,9 @@ class TldDiscordValidator(discord.ext.commands.Cog):
         was_kicked_or_banned = entry
         break
 
-    if was_kicked_or_banned and was_kicked_or_banned.user != self.bot.user: # swy: if we did the kick/ban then ignore it, there's already a message above
-      await client.log_to_channel(member, f" has been **{was_kicked_or_banned.action is discord.AuditLogAction.kick and 'kicked' or 'banned'}** by {was_kicked_or_banned.mention}.")
+    if was_kicked_or_banned:
+      if was_kicked_or_banned.user != self.bot.user: # swy: if we did the kick/ban then ignore it, there's already a message above
+        await client.log_to_channel(member, f" has been **{was_kicked_or_banned.action is discord.AuditLogAction.kick and 'kicked' or 'banned'}** by {was_kicked_or_banned.user.mention}.")
     else:
       await client.log_to_channel(member, f" has **left** on its own.")
 
