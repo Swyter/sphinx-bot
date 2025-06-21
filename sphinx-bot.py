@@ -215,27 +215,23 @@ class TldDiscordValidator(discord.ext.commands.Cog):
       return
     
     print('User left: ', pprint(member), time.strftime("%Y-%m-%d %H:%M"))
-    # swy: find if the user was kicked by the bot or moderation
-    was_kicked = False; five_seconds_ago = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds=5)
 
-    async for entry in member.guild.audit_logs(action=discord.AuditLogAction.kick, user=self.bot.user, limit=3, after=five_seconds_ago):
-      if entry.target == member:
-        was_kicked = True
+    # swy: find if the user was kicked or banned by moderation (i.e. not this bot), or just left by itself, and show it
+    was_kicked_or_banned = False; five_seconds_ago = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds=5)
+
+    async for entry in member.guild.audit_logs(limit=100, after=five_seconds_ago):
+      if entry.target == member and entry.action in [discord.AuditLogAction.kick, discord.AuditLogAction.ban]:
+        was_kicked_or_banned = entry
         break
 
-    # swy: also find if it was banned; no way to search by multiple action= at the same time, so do it twice
-    was_banned = False
-    async for entry in member.guild.audit_logs(action=discord.AuditLogAction.ban, user=self.bot.user, limit=3, after=five_seconds_ago):
-      if entry.target == member:
-        was_banned = True
-        break
-
-    if not (was_kicked or was_banned):
+    if was_kicked_or_banned and was_kicked_or_banned.user != self.bot.user: # swy: if we did the kick/ban then ignore it, there's already a message above
+      await client.log_to_channel(member, f" has been **{was_kicked_or_banned.action is discord.AuditLogAction.kick and 'kicked' or 'banned'}** by {was_kicked_or_banned.mention}.")
+    else:
       await client.log_to_channel(member, f" has **left** on its own.")
 
+    # swy: remove the welcome message from #general if we kick them out or they leave after passing the quiz, suggested by @Medea Fleecestealer
     five_seconds_before_joining = member.joined_at - datetime.timedelta(seconds=5)
 
-    # swy: remove the welcome message from #general if we kick them out or they leave after passing the quiz, suggested by @Medea Fleecestealer
     async for message in member.guild.system_channel.history(limit=30, after=five_seconds_before_joining):
       if message and message.is_system() and message.type == discord.MessageType.new_member and message.author == member:
         print("trying to delete", message, pprint(message))
