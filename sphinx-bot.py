@@ -180,6 +180,14 @@ class TldDiscordValidator(discord.ext.commands.Cog):
   @discord.ext.commands.Cog.listener()
   async def on_member_join(self, member: discord.Member):
     print('User joined: ', pprint(member), time.strftime("%Y-%m-%d %H:%M"))
+
+    # swy: experiment: let veteran (pre-2020) accounts through unscathed, if they are still being used it's unlikely this is spam
+    if self.memberpass_role and member.created_at <= datetime.datetime(2019, 12, 31):
+      await member.add_roles(self.memberpass_role)
+      await client.log_to_channel(member, f" has **joined**. Account created at {member.created_at}; old enough to *skip* validation.")
+      return
+    # --
+
     await client.log_to_channel(member, f" has **joined**. Account created at {member.created_at}. Quarantining and adding *Unverified* role.")
 
     if self.unverified_role:
