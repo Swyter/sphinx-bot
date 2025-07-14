@@ -15,15 +15,15 @@ import datetime
 import logging
 
 logger = logging.getLogger('discord')
-logger.setLevel(logging.INFO)
-handler_to_file = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
-handler_to_file.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
-logger.addHandler(handler_to_file)
+logger.setLevel(logging.DEBUG)
+handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+logger.addHandler(handler)
 
-handler_to_screen = logging.StreamHandler()
-handler_to_screen.setLevel(logging.INFO)
-handler_to_screen.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
-#logger.addHandler(handler_to_screen)
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+ch.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+logger.addHandler(ch)
 
 # swy: exit if we don't have a valid bot token
 if not 'DISCORD_TOKEN' in os.environ:
@@ -254,13 +254,25 @@ class SphinxDiscordClient(discord.ext.commands.Bot):
     super().__init__(*args, **kwargs)
 
   async def setup_hook(self):
-    self.loop.set_debug(True)
-
     # swy: enable the silly goofy lizard reply plug-in
     await self.add_cog(SphinxDiscordGoofyLizard(self, self.log_to_channel))
 
     # swy: enable the member verification plug-in
     await self.add_cog(TldDiscordValidator(self, self.log_to_channel))
+
+    def handle_exit(*args):
+      raise KeyboardInterrupt
+    if os.name != 'nt':
+      loop = asyncio.get_running_loop()
+      loop.add_signal_handler(signal.SIGTERM, handle_exit, signal.SIGTERM)
+      loop.add_signal_handler(signal.SIGABRT, handle_exit, signal.SIGABRT, None)
+      loop.add_signal_handler(signal.SIGINT,  handle_exit, signal.SIGINT) # swy: catch Ctrl-C, just in case: https://stackoverflow.com/a/1112350/674685
+
+  async def close(self):
+    # swy: cancel all lingering tasks and close shop
+    await self.change_presence(status=discord.Status.offline)
+    print("[-] exiting...")
+    await super().close() # swy: https://stackoverflow.com/a/69684341/674685
 
   async def on_ready(self):
     # swy: see checker_background_task() for the initialized "global" variables
@@ -282,7 +294,10 @@ class SphinxDiscordClient(discord.ext.commands.Bot):
       send_to_channel = self.portal_god_log
     
     await send_to_channel.send(f"{user.mention} `{user.name}#{user.discriminator} ({user.id})` {text}")
-      
+
+  async def connect(self, *, reconnect: bool = True) -> None:
+    print("connect")
+    return await super().connect(reconnect=reconnect)
 # --
 
 intents = discord.Intents.default()
@@ -293,28 +308,15 @@ intents.message_content = True
 
 # swy: launch our bot thingie, allow for Ctrl + C
 client = SphinxDiscordClient(intents=intents, command_prefix='goofyl')
-loop = asyncio.get_event_loop()
 
-def handle_exit():
-    raise KeyboardInterrupt
-
-if os.name != 'nt': # swy: if this isn't running on Windows (i.e. Linux/UNIX/macOS)
-  loop.add_signal_handler(signal.SIGTERM, handle_exit, signal.SIGTERM)
-  loop.add_signal_handler(signal.SIGABRT, handle_exit, signal.SIGABRT, None)
-
-
-while True:
-  try:
-    loop.run_until_complete(client.start(os.environ["DISCORD_TOKEN"]))
-    
-  except connector.ClientConnectorError:
-    traceback.print_exc()
-    pass
-
-  # swy: cancel all lingering tasks and close shop
-  except KeyboardInterrupt:
-    loop.run_until_complete(client.change_presence(status=discord.Status.offline))
-    print("[i] ctrl-c detected")
-    loop.run_until_complete(client.close())
-    print("[-] exiting...")
-    sys.exit(0)
+try:
+  while True:
+    asyncio.run(client.start(os.environ["DISCORD_TOKEN"]))
+except KeyboardInterrupt:
+  print("[i] ctrl-c detected")
+  asyncio.run(client.close()) # swy: make sure the bot disappears from the member list immediately
+  sys.exit(130) # swy: means Bash's 128 + 2 (SIGINT) i.e. exiting gracefully
+except Exception as e:
+  print('  [!] loop error. Ignoring:', e)
+  traceback.print_exc()
+  pass
