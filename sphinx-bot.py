@@ -96,6 +96,7 @@ class TldDiscordValidator(discord.ext.commands.Cog):
 
     self.unverified_role = unverified_role = discord.utils.get(self.channel_door.guild.roles, name="Unverified")
     self.memberpass_role = memberpass_role = discord.utils.get(self.channel_door.guild.roles, name="Member")
+    self.memberauto_role = memberauto_role = discord.utils.get(self.channel_door.guild.roles, name="Member (Auto)")
     self.kick_stuck_members.start()
 
     # swy: there's a permanent message with a button (TldVerifyPresentation), when clicking it we
@@ -177,14 +178,38 @@ class TldDiscordValidator(discord.ext.commands.Cog):
     )
     '''
 
+  # swy: if the server rules screen is enabled newly-joined members will be .pending = True. so giving them a
+  #      role (even the unverified one) at on_member_join() will bypass this screen and remove the .pending status
+  async def is_server_rules_screen_enabled(self, guild: discord.Guild):
+    return 'MEMBER_VERIFICATION_GATE_ENABLED' in guild.features
+
   @discord.ext.commands.Cog.listener()
   async def on_member_join(self, member: discord.Member):
     print('User joined: ', pprint(member), time.strftime("%Y-%m-%d %H:%M"))
 
+    if not await self.is_server_rules_screen_enabled(member.guild):
+      await self.on_full_member_join(member)
+
+  # swy: wait for the member to accept the server rules screen before changing roles and doing additional verification stuff
+  @discord.ext.commands.Cog.listener()
+  async def on_member_update(self, before: discord.Member, after: discord.Member):
+    if await self.is_server_rules_screen_enabled(after.guild):
+      if before.pending and not after.pending:
+          await self.on_full_member_join(after)
+  # --
+
+  async def on_full_member_join(self, member: discord.Member):
     # swy: experiment: let veteran (pre-2020) accounts through unscathed, if they are still being used it's unlikely this is spam
-    if self.memberpass_role and member.created_at <= datetime.datetime(2019, 12, 31, tzinfo=datetime.timezone.utc):
-      await member.add_roles(self.memberpass_role)
+    if self.memberauto_role and member.created_at <= datetime.datetime(2019, 12, 31, tzinfo=datetime.timezone.utc):
+      await member.add_roles(self.memberauto_role)
       await client.log_to_channel(member, f" has **joined**. Account created at {member.created_at}; old enough to *skip* validation.")
+
+      # swy: add a distinctive «badge» in the join log message to distinguish it from the people that get kicked out
+      async for message in member.guild.system_channel.history(limit=60):
+        if message and message.is_system() and message.type == discord.MessageType.new_member and message.author == member.user:
+          print("trying to add reaction", message, pprint(message))
+          await message.add_reaction('🆗')
+          break
       return
     # --
 
