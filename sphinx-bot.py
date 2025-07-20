@@ -202,7 +202,7 @@ class TldDiscordValidator(discord.ext.commands.Cog):
     # swy: experiment: let veteran (pre-2020) accounts through unscathed, if they are still being used it's unlikely this is spam
     if self.memberauto_role and member.created_at <= datetime.datetime(2019, 12, 31, tzinfo=datetime.timezone.utc):
       await member.add_roles(self.memberauto_role)
-      await client.log_to_channel(member, f" has **joined**. Account created at {member.created_at}; old enough to *skip* validation.")
+      await client.log_to_channel(member, f" has **joined**. Account created at {member.created_at}; veteran enough to **skip** validation.")
 
       # swy: add a distinctive «badge» in the join log message to distinguish it from the people that get kicked out
       async for message in member.guild.system_channel.history(limit=60):
