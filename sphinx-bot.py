@@ -145,7 +145,7 @@ class TldDiscordValidator(discord.ext.commands.Cog):
                 # swy: are all the options correct? even one bad one will cause it to fail
                 if len(set(select.values).intersection(rand_answers_good)) != len(rand_answers_good):
                   await interaction.response.send_message(f"Darn, try again!", ephemeral=True)
-                  await client.log_to_channel(interaction.user, f"has **failed** validation by responding {select.values}.")
+                  await client.log_to_channel(interaction.user, f" has **failed** validation by responding {select.values}.")
                   return
 
                 # swy: unquarantine the user by getting rid of this role
@@ -156,7 +156,7 @@ class TldDiscordValidator(discord.ext.commands.Cog):
                 # swy: give the discord client a couple of seconds to refresh the available channel list after getting rid of the probation role.
                 #      gotta love this stuff, otherwise it shows #not available instead of #rules.
                 await interaction.response.send_message(f"Awesome! I like {select.values[0]} too!\nNow you are in. Head over to {interaction.guild.rules_channel.mention}.", ephemeral=True)
-                await client.log_to_channel(interaction.user, f"has **passed** validation by responding {rand_answers_good}.")
+                await client.log_to_channel(interaction.user, f" has **passed** validation by responding {rand_answers_good}.")
 
                 # swy: add a distinctive «badge» in the join log message to distinguish it from the people that get kicked out
                 async for message in interaction.guild.system_channel.history(limit=60):
@@ -232,7 +232,7 @@ class TldDiscordValidator(discord.ext.commands.Cog):
       then = member.joined_at; now = datetime.datetime.now(datetime.timezone.utc)
 
       if (now - then) > datetime.timedelta(minutes=10):
-        await client.log_to_channel(member, f"is getting **kicked** for being on quarantine for too long.")
+        await client.log_to_channel(member, f" is getting **kicked** for being on quarantine for too long.")
         await member.kick(reason='bot: waited too long before passing the test')
 
   @discord.ext.commands.Cog.listener()
