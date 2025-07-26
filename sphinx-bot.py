@@ -96,7 +96,7 @@ class TldDiscordValidator(discord.ext.commands.Cog):
 
     self.unverified_role = unverified_role = discord.utils.get(self.channel_door.guild.roles, name="Unverified")
     self.memberpass_role = memberpass_role = discord.utils.get(self.channel_door.guild.roles, name="Member")
-    self.memberauto_role = memberauto_role = discord.utils.get(self.channel_door.guild.roles, name="Member (Auto)")
+    self.memberauto_role = memberauto_role = discord.utils.get(self.channel_door.guild.roles, name="Member (auto)")
     self.kick_stuck_members.start()
 
     # swy: there's a permanent message with a button (TldVerifyPresentation), when clicking it we
