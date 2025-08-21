@@ -206,7 +206,7 @@ class TldDiscordValidator(discord.ext.commands.Cog):
 
       # swy: add a distinctive «badge» in the join log message to distinguish it from the people that get kicked out
       async for message in member.guild.system_channel.history(limit=60):
-        if message and message.is_system() and message.type == discord.MessageType.new_member and message.author == member.user:
+        if message and message.is_system() and message.type == discord.MessageType.new_member and message.author == member:
           print("trying to add reaction", message, pprint(message))
           await message.add_reaction('🆗')
           break
@@ -345,3 +345,4 @@ except Exception as e:
   print('  [!] loop error. Ignoring:', e)
   traceback.print_exc()
   pass
+
