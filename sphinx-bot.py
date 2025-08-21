@@ -178,6 +178,11 @@ class TldDiscordValidator(discord.ext.commands.Cog):
     )
     '''
 
+  # swy: cancel the recurrent task in disconnects and avoid double .start()s
+  #      on reconnect, where we would execute on_ready() twice
+  def cog_unload(self):
+    self.kick_stuck_members.stop()
+
   # swy: if the server rules screen is enabled newly-joined members will be .pending = True. so giving them a
   #      role (even the unverified one) at on_member_join() will bypass this screen and remove the .pending status
   async def is_server_rules_screen_enabled(self, guild: discord.Guild):
