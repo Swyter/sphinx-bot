@@ -118,11 +118,11 @@ class TldDiscordValidator(discord.ext.commands.Cog):
           random.shuffle(rand_quest['answers_good'])
           random.shuffle(rand_quest['answers_bad' ])
 
-          # swy: get the first three of each after shuffling
+          # swy: get the first one of the good list and the first two of the bad ones after shuffling
           rand_answers_good = rand_quest['answers_good'][:1]
           rand_answers_bad  = rand_quest['answers_bad' ][:2]
 
-          # swy: fill out the combobox; we need to randomize the order again after mixing the good and bad ones
+          # swy: fill out the combobox; we need to randomize the order again after mixing in the good and bad ones
           question_text = rand_quest['question']
           answers_all   = (rand_answers_good + rand_answers_bad); random.shuffle(answers_all); print("answers:", answers_all)
           ans_options   = [discord.SelectOption(label=cur_answer)  for cur_answer in answers_all]
@@ -145,7 +145,7 @@ class TldDiscordValidator(discord.ext.commands.Cog):
                 # swy: are all the options correct? even one bad one will cause it to fail
                 if len(set(select.values).intersection(rand_answers_good)) != len(rand_answers_good):
                   await interaction.response.send_message(f"Darn, try again!", ephemeral=True)
-                  await client.log_to_channel(interaction.user, f" has **failed** validation by responding {select.values}.")
+                  await client.log_to_channel(interaction.user, f" has **failed** validation by responding {select.values}. 🧠🧠🧠")
                   return
 
                 # swy: unquarantine the user by getting rid of this role
@@ -350,4 +350,5 @@ except Exception as e:
   print('  [!] loop error. Ignoring:', e)
   traceback.print_exc()
   pass
+
 
